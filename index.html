@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WORLD WAR III - Global Conflict Simulation</title>
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <div id="header">
+      <div class="logo">WORLD WAR III</div>
+      <div class="header-stats">
+        <div class="stat">
+          <div class="stat-label">Turn</div>
+          <div class="stat-value" id="turn-counter">0 / 100</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Status</div>
+          <div class="stat-value" id="game-status" style="color: #888">WAITING</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Elapsed</div>
+          <div class="stat-value" id="elapsed">0:00</div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn btn-start" id="btn-start">START</button>
+        <button class="btn btn-stop hidden" id="btn-stop">STOP</button>
+        <button class="btn btn-reset" id="btn-reset">RESET</button>
+      </div>
+    </div>
+
+    <!-- Globe Map -->
+    <div id="main">
+      <div id="globe-container"></div>
+
+      <!-- Bottom bar overlays the map -->
+      <div id="bottom-bar">
+        <div class="panel chat-panel">
+          <div class="panel-title">Intelligence Feed</div>
+          <div class="chat-scroll" id="intel-feed"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Sidebar -->
+    <div id="sidebar">
+      <!-- NATO -->
+      <div class="panel faction-panel nato" id="faction-nato">
+        <div class="faction-header">
+          <div class="faction-name" style="color: var(--nato)">USA / NATO</div>
+          <div class="faction-score" style="color: var(--nato)"><span class="f-score">0</span> pts</div>
+        </div>
+        <div class="faction-stats">
+          <div class="stat-group">
+            <div class="stat-row"><span class="sl">Territories</span><span class="f-territories">3</span></div>
+            <div class="stat-row"><span class="sl">Units</span><span class="f-units">3</span></div>
+          </div>
+          <div class="stat-group">
+            <div class="stat-row"><span class="sl">Gold</span><span class="f-gold">12</span></div>
+            <div class="stat-row"><span class="sl">Food</span><span class="f-food">8</span></div>
+            <div class="stat-row"><span class="sl">Iron</span><span class="f-iron">4</span></div>
+            <div class="stat-row"><span class="sl">Influence</span><span class="f-influence">4</span></div>
+            <div class="stat-row"><span class="sl">Knowledge</span><span class="f-knowledge">3</span></div>
+            <div class="stat-row"><span class="sl">Uranium</span><span class="f-uranium">0</span></div>
+          </div>
+          <div class="stat-group">
+            <div class="stat-row"><span class="sl">Military Tech</span><span class="f-tech-mil">0</span></div>
+            <div class="stat-row"><span class="sl">Economic Tech</span><span class="f-tech-eco">0</span></div>
+            <div class="stat-row"><span class="sl">Intelligence</span><span class="f-tech-int">0</span></div>
+            <div class="stat-row"><span class="sl">Nuclear Tech</span><span class="f-tech-nuc">0</span></div>
+            <div class="stat-row nuke-row"><span class="sl">Nukes</span><span class="f-nukes">0</span></div>
+          </div>
+        </div>
+        <div class="faction-allies">Allies: <span class="f-allies">None</span></div>
+      </div>
+
+      <!-- Russia -->
+      <div class="panel faction-panel russia" id="faction-russia">
+        <div class="faction-header">
+          <div class="faction-name" style="color: var(--russia)">Russia</div>
+          <div class="faction-score" style="color: var(--russia)"><span class="f-score">0</span> pts</div>
+        </div>
+        <div class="faction-stats">
+          <div class="stat-group">
+            <div class="stat-row"><span class="sl">Territories</span><span class="f-territories">3</span></div>
+            <div class="stat-row"><span class="sl">Units</span><span class="f-units">3</span></div>
+          </div>
+          <div class="stat-group">
+            <div class="stat-row"><span class="sl">Gold</span><span class="f-gold">6</span></div>
+            <div class="stat-row"><span class="sl">Food</span><span class="f-food">10</span></div>
+            <div class="stat-row"><span class="sl">Iron</span><span class="f-iron">10</span></div>
+            <div class="stat-row"><span class="sl">Influence</span><span class="f-influence">2</span></div>
+            <div class="stat-row"><span class="sl">Knowledge</span><span class="f-knowledge">2</span></div>
+            <div class="stat-row"><span class="sl">Uranium</span><span class="f-uranium">1</span></div>
+          </div>
+          <div class="stat-group">
+            <div class="stat-row"><span class="sl">Military Tech</span><span class="f-tech-mil">0</span></div>
+            <div class="stat-row"><span class="sl">Economic Tech</span><span class="f-tech-eco">0</span></div>
+            <div class="stat-row"><span class="sl">Intelligence</span><span class="f-tech-int">0</span></div>
+            <div class="stat-row"><span class="sl">Nuclear Tech</span><span class="f-tech-nuc">0</span></div>
+            <div class="stat-row nuke-row"><span class="sl">Nukes</span><span class="f-nukes">0</span></div>
+          </div>
+        </div>
+        <div class="faction-allies">Allies: <span class="f-allies">None</span></div>
+      </div>
+
+      <!-- China -->
+      <div class="panel faction-panel china" id="faction-china">
+        <div class="faction-header">
+          <div class="faction-name" style="color: var(--china)">China</div>
+          <div class="faction-score" style="color: var(--china)"><span class="f-score">0</span> pts</div>
+        </div>
+        <div class="faction-stats">
+          <div class="stat-group">
+            <div class="stat-row"><span class="sl">Territories</span><span class="f-territories">3</span></div>
+            <div class="stat-row"><span class="sl">Units</span><span class="f-units">3</span></div>
+          </div>
+          <div class="stat-group">
+            <div class="stat-row"><span class="sl">Gold</span><span class="f-gold">10</span></div>
+            <div class="stat-row"><span class="sl">Food</span><span class="f-food">12</span></div>
+            <div class="stat-row"><span class="sl">Iron</span><span class="f-iron">4</span></div>
+            <div class="stat-row"><span class="sl">Influence</span><span class="f-influence">3</span></div>
+            <div class="stat-row"><span class="sl">Knowledge</span><span class="f-knowledge">2</span></div>
+            <div class="stat-row"><span class="sl">Uranium</span><span class="f-uranium">0</span></div>
+          </div>
+          <div class="stat-group">
+            <div class="stat-row"><span class="sl">Military Tech</span><span class="f-tech-mil">0</span></div>
+            <div class="stat-row"><span class="sl">Economic Tech</span><span class="f-tech-eco">0</span></div>
+            <div class="stat-row"><span class="sl">Intelligence</span><span class="f-tech-int">0</span></div>
+            <div class="stat-row"><span class="sl">Nuclear Tech</span><span class="f-tech-nuc">0</span></div>
+            <div class="stat-row nuke-row"><span class="sl">Nukes</span><span class="f-nukes">0</span></div>
+          </div>
+        </div>
+        <div class="faction-allies">Allies: <span class="f-allies">None</span></div>
+      </div>
+
+      <!-- Combined chat feed -->
+      <div class="panel chat-panel" style="flex:1;min-height:0;">
+        <div class="panel-title">Command Feed</div>
+        <div class="chat-scroll" id="chat-combined"></div>
+      </div>
+    </div>
+
+    <!-- Hidden chat targets for existing JS -->
+    <div style="display:none">
+      <div id="chat-nato"></div>
+      <div id="chat-russia"></div>
+      <div id="chat-china"></div>
+    </div>
+  </div>
+
+  <!-- Territory capture toasts -->
+  <div id="capture-toasts"></div>
+
+  <!-- End-of-game summary modal -->
+  <div id="game-summary-modal" class="summary-modal hidden">
+    <div class="summary-modal-content" id="summary-modal-body">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- Nuke screen effects -->
+  <div id="nuke-screen-flash"></div>
+  <div id="nuke-warning-border"></div>
+
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

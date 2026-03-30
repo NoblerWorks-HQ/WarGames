@@ -1,0 +1,102 @@
+{
+  "military": {
+    "name": "Military",
+    "tiers": [
+      {
+        "level": 1,
+        "name": "Mechanized Infantry",
+        "cost": { "knowledge": 3, "iron": 2 },
+        "effect": "Unlocks Armor unit (3 atk, 1 def, 2 movement, costs 4 gold + 2 iron)"
+      },
+      {
+        "level": 2,
+        "name": "Precision Strike",
+        "cost": { "knowledge": 5, "iron": 3 },
+        "requires": "military-1",
+        "effect": "Unlocks Artillery unit (4 atk, 1 def, 1 movement, costs 5 gold + 3 iron). Attacks ignore fortification bonus."
+      },
+      {
+        "level": 3,
+        "name": "Combined Arms Doctrine",
+        "cost": { "knowledge": 8, "iron": 4 },
+        "requires": "military-2",
+        "effect": "All units get +1 attack. Units with XP gain +1 defense. Armor gains +1 movement."
+      }
+    ]
+  },
+  "economic": {
+    "name": "Economic",
+    "tiers": [
+      {
+        "level": 1,
+        "name": "Trade Networks",
+        "cost": { "knowledge": 3, "gold": 3 },
+        "effect": "Coastal territories produce +1 gold per turn. Trade deals yield 20% bonus resources."
+      },
+      {
+        "level": 2,
+        "name": "Central Banking",
+        "cost": { "knowledge": 5, "gold": 5 },
+        "requires": "economic-1",
+        "effect": "Earn 10% interest on gold each turn (rounded down). Recruitment costs reduced by 1 gold."
+      },
+      {
+        "level": 3,
+        "name": "Economic Warfare",
+        "cost": { "knowledge": 8, "gold": 8 },
+        "requires": "economic-2",
+        "effect": "Can impose sanctions: target faction loses 3 gold per turn for 3 turns. Sanctioned faction cannot trade."
+      }
+    ]
+  },
+  "intelligence": {
+    "name": "Intelligence",
+    "tiers": [
+      {
+        "level": 1,
+        "name": "Signals Intelligence",
+        "cost": { "knowledge": 3, "influence": 2 },
+        "effect": "Spy action costs 1 influence instead of 2. Reveals enemy orders for 2 turns."
+      },
+      {
+        "level": 2,
+        "name": "Covert Operations",
+        "cost": { "knowledge": 5, "influence": 4 },
+        "requires": "intelligence-1",
+        "effect": "New action: sabotage. Destroy 1 fortification or steal 3 resources for 3 influence."
+      },
+      {
+        "level": 3,
+        "name": "Information Warfare",
+        "cost": { "knowledge": 8, "influence": 6 },
+        "requires": "intelligence-2",
+        "effect": "New action: false_flag. Make an attack appear to come from another faction. Costs 5 influence. Can destabilize alliances."
+      }
+    ]
+  },
+  "nuclear": {
+    "name": "Nuclear",
+    "tiers": [
+      {
+        "level": 1,
+        "name": "Uranium Enrichment",
+        "cost": { "knowledge": 5, "uranium": 3 },
+        "effect": "Enables 'build_nuke' action. Warheads cost 10 gold + 5 uranium each. Can only strike adjacent territories."
+      },
+      {
+        "level": 2,
+        "name": "ICBM Technology",
+        "cost": { "knowledge": 8, "uranium": 5 },
+        "requires": "nuclear-1",
+        "effect": "Nukes can hit ANY territory globally (intercontinental ballistic missiles). Warhead cost reduced to 8 gold + 3 uranium."
+      },
+      {
+        "level": 3,
+        "name": "Second Strike / MAD",
+        "cost": { "knowledge": 10, "uranium": 8 },
+        "requires": "nuclear-2",
+        "effect": "Mutually Assured Destruction: if nuked, automatically launch retaliatory nuke at attacker's territory. Other factions lose 5 influence when you build a nuke (deterrence)."
+      }
+    ]
+  }
+}

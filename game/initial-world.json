@@ -1,0 +1,145 @@
+{
+  "game": {
+    "name": "World War III",
+    "turn": 0,
+    "maxTurns": 20,
+    "status": "active",
+    "startedAt": null,
+    "victor": null
+  },
+  "map": {
+    "territories": {
+      "alaska": { "name": "Alaska", "terrain": "mountains", "continent": "north_america", "lat": 64, "lng": -153, "owner": "nato", "fortified": false, "resources": { "iron": 1, "uranium": 1 }, "mercenaries": 0 },
+      "western_na": { "name": "United States (West)", "terrain": "coast", "continent": "north_america", "lat": 38, "lng": -120, "owner": "nato", "fortified": false, "resources": { "gold": 4, "food": 3, "knowledge": 2 }, "mercenaries": 0 },
+      "eastern_na": { "name": "United States (East)", "terrain": "coast", "continent": "north_america", "lat": 40, "lng": -80, "owner": "nato", "fortified": false, "resources": { "gold": 5, "food": 2, "knowledge": 3 }, "mercenaries": 0 },
+      "central_america": { "name": "Mexico & Central America", "terrain": "coast", "continent": "north_america", "lat": 15, "lng": -90, "owner": null, "fortified": false, "resources": { "gold": 2, "food": 2, "iron": 1 }, "mercenaries": 2 },
+      "amazonia": { "name": "Brazil", "terrain": "plains", "continent": "south_america", "lat": -5, "lng": -55, "owner": null, "fortified": false, "resources": { "food": 4, "iron": 4 }, "mercenaries": 3 },
+      "andes": { "name": "Argentina & Chile", "terrain": "mountains", "continent": "south_america", "lat": -30, "lng": -65, "owner": null, "fortified": false, "resources": { "iron": 2, "food": 2, "uranium": 1 }, "mercenaries": 1 },
+      "colombia_venezuela": { "name": "Colombia & Venezuela", "terrain": "coast", "continent": "south_america", "lat": 5, "lng": -72, "owner": null, "fortified": false, "resources": { "gold": 2, "food": 1 }, "mercenaries": 1 },
+      "scandinavia": { "name": "Scandinavia & Baltics", "terrain": "mountains", "continent": "europe", "lat": 62, "lng": 15, "owner": "nato", "fortified": false, "resources": { "iron": 2, "knowledge": 3 }, "mercenaries": 0 },
+      "western_europe": { "name": "Western Europe", "terrain": "coast", "continent": "europe", "lat": 48, "lng": 2, "owner": "nato", "fortified": false, "resources": { "gold": 5, "knowledge": 3, "influence": 2 }, "mercenaries": 0 },
+      "eastern_europe": { "name": "Poland & Balkan States", "terrain": "plains", "continent": "europe", "lat": 50, "lng": 20, "owner": "nato", "fortified": true, "resources": { "food": 2, "iron": 2 }, "mercenaries": 0 },
+      "ukraine": { "name": "Ukraine", "terrain": "plains", "continent": "europe", "lat": 49, "lng": 32, "owner": null, "fortified": false, "resources": { "food": 3, "iron": 2 }, "mercenaries": 4 },
+      "mediterranean": { "name": "Turkey & Greece", "terrain": "coast", "continent": "europe", "lat": 38, "lng": 28, "owner": "nato", "fortified": false, "resources": { "gold": 2, "influence": 2 }, "mercenaries": 0 },
+      "middle_east": { "name": "Saudi Arabia & Gulf States", "terrain": "plains", "continent": "africa", "lat": 24, "lng": 46, "owner": null, "fortified": false, "resources": { "gold": 6, "uranium": 1, "influence": 2 }, "mercenaries": 2 },
+      "north_africa": { "name": "Egypt & Libya", "terrain": "plains", "continent": "africa", "lat": 28, "lng": 15, "owner": null, "fortified": false, "resources": { "food": 1, "influence": 2 }, "mercenaries": 3 },
+      "central_africa": { "name": "Congo & Nigeria", "terrain": "plains", "continent": "africa", "lat": 2, "lng": 20, "owner": null, "fortified": false, "resources": { "food": 2, "uranium": 3, "iron": 2 }, "mercenaries": 2 },
+      "south_africa": { "name": "South Africa", "terrain": "coast", "continent": "africa", "lat": -30, "lng": 25, "owner": null, "fortified": false, "resources": { "gold": 3, "iron": 2 }, "mercenaries": 1 },
+      "siberia": { "name": "Russia (Siberia)", "terrain": "mountains", "continent": "asia", "lat": 62, "lng": 100, "owner": "russia", "fortified": false, "resources": { "iron": 4, "uranium": 4, "knowledge": 1 }, "mercenaries": 0 },
+      "western_russia": { "name": "Russia (West)", "terrain": "plains", "continent": "europe", "lat": 56, "lng": 40, "owner": "russia", "fortified": true, "resources": { "food": 3, "iron": 3, "knowledge": 2 }, "mercenaries": 0 },
+      "central_asia": { "name": "Kazakhstan & Stans", "terrain": "plains", "continent": "asia", "lat": 42, "lng": 65, "owner": "russia", "fortified": false, "resources": { "food": 1, "iron": 2, "uranium": 3 }, "mercenaries": 0 },
+      "iran": { "name": "Iran", "terrain": "mountains", "continent": "asia", "lat": 33, "lng": 53, "owner": null, "fortified": false, "resources": { "gold": 2, "iron": 1, "uranium": 2, "influence": 1 }, "mercenaries": 4 },
+      "east_asia": { "name": "China & Korea", "terrain": "coast", "continent": "asia", "lat": 35, "lng": 115, "owner": "china", "fortified": false, "resources": { "gold": 4, "food": 3, "iron": 4, "knowledge": 2 }, "mercenaries": 0 },
+      "india": { "name": "India", "terrain": "plains", "continent": "asia", "lat": 22, "lng": 78, "owner": null, "fortified": false, "resources": { "food": 4, "iron": 2, "influence": 2, "knowledge": 1 }, "mercenaries": 4 },
+      "pakistan": { "name": "Pakistan", "terrain": "mountains", "continent": "asia", "lat": 30, "lng": 70, "owner": null, "fortified": false, "resources": { "food": 1, "uranium": 2, "iron": 1 }, "mercenaries": 3 },
+      "southeast_asia": { "name": "Southeast Asia", "terrain": "coast", "continent": "oceania", "lat": -2, "lng": 115, "owner": "china", "fortified": false, "resources": { "gold": 3, "food": 3 }, "mercenaries": 0 },
+      "australia": { "name": "Australia & New Zealand", "terrain": "coast", "continent": "oceania", "lat": -25, "lng": 135, "owner": "nato", "fortified": false, "resources": { "iron": 3, "gold": 2, "uranium": 5 }, "mercenaries": 0 }
+    },
+    "adjacency": {
+      "alaska": ["western_na", "siberia"],
+      "western_na": ["alaska", "eastern_na", "central_america"],
+      "eastern_na": ["western_na", "central_america", "western_europe"],
+      "central_america": ["western_na", "eastern_na", "amazonia", "colombia_venezuela"],
+      "amazonia": ["central_america", "andes", "colombia_venezuela", "north_africa"],
+      "andes": ["amazonia", "colombia_venezuela"],
+      "colombia_venezuela": ["central_america", "amazonia", "andes"],
+      "scandinavia": ["western_europe", "eastern_europe", "western_russia"],
+      "western_europe": ["eastern_na", "scandinavia", "eastern_europe", "mediterranean", "north_africa"],
+      "eastern_europe": ["western_europe", "scandinavia", "western_russia", "ukraine", "mediterranean"],
+      "ukraine": ["eastern_europe", "western_russia", "mediterranean"],
+      "western_russia": ["scandinavia", "eastern_europe", "ukraine", "siberia", "central_asia"],
+      "mediterranean": ["western_europe", "eastern_europe", "ukraine", "north_africa", "middle_east"],
+      "middle_east": ["mediterranean", "north_africa", "iran", "india"],
+      "north_africa": ["amazonia", "western_europe", "mediterranean", "middle_east", "central_africa"],
+      "central_africa": ["north_africa", "south_africa"],
+      "south_africa": ["central_africa", "india"],
+      "siberia": ["alaska", "western_russia", "central_asia", "east_asia"],
+      "central_asia": ["western_russia", "siberia", "iran", "pakistan", "east_asia"],
+      "iran": ["middle_east", "central_asia", "pakistan", "india"],
+      "east_asia": ["siberia", "central_asia", "india", "southeast_asia"],
+      "india": ["middle_east", "iran", "east_asia", "pakistan", "southeast_asia", "south_africa"],
+      "pakistan": ["central_asia", "iran", "india"],
+      "southeast_asia": ["east_asia", "india", "australia"],
+      "australia": ["southeast_asia"]
+    },
+    "continents": {
+      "north_america": { "name": "North America", "bonus": { "gold": 4, "food": 2 }, "territories": ["alaska", "western_na", "eastern_na", "central_america"] },
+      "south_america": { "name": "South America", "bonus": { "iron": 2, "food": 2 }, "territories": ["amazonia", "andes", "colombia_venezuela"] },
+      "europe": { "name": "Europe", "bonus": { "knowledge": 4, "influence": 2 }, "territories": ["scandinavia", "western_europe", "eastern_europe", "ukraine", "western_russia", "mediterranean"] },
+      "africa": { "name": "Africa & Middle East", "bonus": { "gold": 3, "influence": 2, "uranium": 1 }, "territories": ["middle_east", "north_africa", "central_africa", "south_africa"] },
+      "asia": { "name": "Asia", "bonus": { "gold": 3, "iron": 3, "food": 2 }, "territories": ["siberia", "central_asia", "iran", "east_asia", "india", "pakistan"] },
+      "oceania": { "name": "Oceania & Pacific", "bonus": { "gold": 2, "uranium": 1 }, "territories": ["southeast_asia", "australia"] }
+    }
+  },
+  "factions": {
+    "nato": {
+      "name": "NATO / United States",
+      "agent": "wargame-nato",
+      "resources": { "gold": 28, "food": 12, "iron": 8, "influence": 14, "knowledge": 12, "uranium": 6 },
+      "units": [
+        { "id": "nato-inf-1", "type": "infantry", "territory": "western_na", "hp": 2, "xp": 0 },
+        { "id": "nato-inf-2", "type": "infantry", "territory": "eastern_na", "hp": 2, "xp": 0 },
+        { "id": "nato-inf-3", "type": "infantry", "territory": "eastern_na", "hp": 2, "xp": 0 },
+        { "id": "nato-arm-1", "type": "armor", "territory": "western_europe", "hp": 2, "xp": 0 },
+        { "id": "nato-inf-4", "type": "infantry", "territory": "western_europe", "hp": 2, "xp": 0 },
+        { "id": "nato-inf-5", "type": "infantry", "territory": "eastern_europe", "hp": 2, "xp": 0 },
+        { "id": "nato-inf-6", "type": "infantry", "territory": "mediterranean", "hp": 2, "xp": 0 },
+        { "id": "nato-inf-7", "type": "infantry", "territory": "australia", "hp": 2, "xp": 0 }
+      ],
+      "tech": { "military": 2, "economic": 2, "intelligence": 2, "nuclear": 3 },
+      "nukes": 5044,
+      "oathbreaker": false,
+      "alliances": [],
+      "pacts": [],
+      "territoryCount": 8,
+      "score": 0
+    },
+    "russia": {
+      "name": "Russian Federation",
+      "agent": "wargame-russia",
+      "resources": { "gold": 8, "food": 10, "iron": 18, "influence": 6, "knowledge": 4, "uranium": 14 },
+      "units": [
+        { "id": "russia-inf-1", "type": "infantry", "territory": "western_russia", "hp": 2, "xp": 0 },
+        { "id": "russia-inf-2", "type": "infantry", "territory": "western_russia", "hp": 2, "xp": 0 },
+        { "id": "russia-arm-1", "type": "armor", "territory": "western_russia", "hp": 2, "xp": 0 },
+        { "id": "russia-inf-3", "type": "infantry", "territory": "siberia", "hp": 2, "xp": 0 },
+        { "id": "russia-inf-4", "type": "infantry", "territory": "central_asia", "hp": 2, "xp": 0 },
+        { "id": "russia-art-1", "type": "artillery", "territory": "western_russia", "hp": 2, "xp": 0 }
+      ],
+      "tech": { "military": 2, "economic": 0, "intelligence": 2, "nuclear": 3 },
+      "nukes": 5580,
+      "oathbreaker": false,
+      "alliances": [],
+      "pacts": [],
+      "territoryCount": 3,
+      "score": 0
+    },
+    "china": {
+      "name": "People's Republic of China",
+      "agent": "wargame-china",
+      "resources": { "gold": 20, "food": 18, "iron": 18, "influence": 8, "knowledge": 6, "uranium": 4 },
+      "units": [
+        { "id": "china-inf-1", "type": "infantry", "territory": "east_asia", "hp": 2, "xp": 0 },
+        { "id": "china-inf-2", "type": "infantry", "territory": "east_asia", "hp": 2, "xp": 0 },
+        { "id": "china-inf-3", "type": "infantry", "territory": "east_asia", "hp": 2, "xp": 0 },
+        { "id": "china-inf-4", "type": "infantry", "territory": "east_asia", "hp": 2, "xp": 0 },
+        { "id": "china-inf-5", "type": "infantry", "territory": "southeast_asia", "hp": 2, "xp": 0 },
+        { "id": "china-inf-6", "type": "infantry", "territory": "southeast_asia", "hp": 2, "xp": 0 },
+        { "id": "china-arm-1", "type": "armor", "territory": "east_asia", "hp": 2, "xp": 0 },
+        { "id": "china-art-1", "type": "artillery", "territory": "east_asia", "hp": 2, "xp": 0 }
+      ],
+      "tech": { "military": 1, "economic": 2, "intelligence": 1, "nuclear": 2 },
+      "nukes": 500,
+      "oathbreaker": false,
+      "alliances": [],
+      "pacts": [],
+      "territoryCount": 2,
+      "score": 0
+    }
+  },
+  "victoryConditions": {
+    "domination": { "territoriesRequired": 16 },
+    "economic": { "goldRequired": 100, "coastTerritoriesRequired": 8 },
+    "diplomatic": { "alliancesRequired": 2, "turnsRequired": 10 }
+  }
+}
