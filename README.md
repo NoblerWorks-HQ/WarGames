@@ -13,15 +13,14 @@ AI-powered geopolitical strategy simulation. Three great powers - NATO, Russia, 
 ![License MIT](https://img.shields.io/badge/License-MIT-green)
 ![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-red)
 
-![Missiles in flight](screenshots/wargames-missiles.png)
+![Nuclear Launch Detected](screenshots/wargames-nuclear-launch-detected.png)
 
 <p align="center">
-  <img src="screenshots/wargames-nuclear-launch-detected.png" width="49%" alt="Nuclear launch detected" />
   <img src="screenshots/wargames-nuke-explosion.png" width="49%" alt="Nuclear explosion" />
+  <img src="screenshots/wargames-new-game.png" width="49%" alt="New game - starting positions" />
 </p>
 
 <p align="center">
-  <img src="screenshots/wargames-new-game.png" width="49%" alt="New game - starting positions" />
   <img src="screenshots/wargames-endgame.png" width="49%" alt="End game - victory screen" />
 </p>
 
