@@ -16,11 +16,12 @@ AI-powered geopolitical strategy simulation. Three great powers - NATO, Russia, 
 ![Missiles in flight](screenshots/wargames-missiles.png)
 
 <p align="center">
-  <img src="screenshots/wargames-new-game.png" width="49%" alt="New game - starting positions" />
-  <img src="screenshots/wargames-explosion.png" width="49%" alt="Nuclear explosion effects" />
+  <img src="screenshots/wargames-nuclear-launch-detected.png" width="49%" alt="Nuclear launch detected" />
+  <img src="screenshots/wargames-nuke-explosion.png" width="49%" alt="Nuclear explosion" />
 </p>
 
 <p align="center">
+  <img src="screenshots/wargames-new-game.png" width="49%" alt="New game - starting positions" />
   <img src="screenshots/wargames-endgame.png" width="49%" alt="End game - victory screen" />
 </p>
 
