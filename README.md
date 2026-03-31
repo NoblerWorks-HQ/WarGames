@@ -117,6 +117,47 @@ Each turn (every 10-15 seconds):
 | **Russia** | President Putin | Defensive depth, nuclear deterrence, cold calculation |
 | **China** | President Xi Jinping | Economic leverage, patience, long-term strategy |
 
+## Architecture
+
+- **Frontend**: Vite + TypeScript + Leaflet map with territory overlays, combat effects, and game summary
+- **Backend**: Express server (port 3001) with game engine and AI provider abstraction
+- **AI**: Direct API calls to Gemini, OpenAI, or Anthropic (no agent framework - just raw API)
+- **State**: In-memory game state, turn history stored per-game
+
+### Project Structure
+
+```
+server/
+  index.ts          - Express server setup, dotenv loading, API routes
+  ai-provider.ts    - Multi-provider abstraction (Gemini/OpenAI/Anthropic)
+  ai.ts             - High-level AI functions (getFactionOrders, getNarrative)
+  engine.ts         - Game engine, turn resolution, combat, diplomacy
+  types.ts          - TypeScript interfaces for game state, orders, events
+src/
+  main.ts           - Frontend entry point
+  flatmap.ts        - Leaflet map rendering, territory overlays, UI
+  style.css         - Styles
+game/
+  factions/         - Faction persona markdown files
+  initial-world.json - Starting game state and map configuration
+```
+
+### Game Engine
+
+`server/engine.ts` runs the turn loop:
+
+1. Build a briefing for each faction (visible territories, resources, units, valid actions)
+2. Call `getFactionOrders()` in parallel for all 3 factions
+3. Parse JSON responses, resolve orders (movement, combat, research, diplomacy, nukes, etc.)
+4. Call `getNarrative()` for a dramatic news-style recap
+5. Store turn history, broadcast state to clients via polling
+
+### Cost Controls
+
+- Default to cheapest models (Gemini Flash, GPT-4o-mini)
+- Compact JSON format for all orders (no prose in game data)
+- 15-second timeouts prevent runaway calls
+
 ## Development
 
 ```bash
@@ -126,12 +167,6 @@ npm run client   # Vite dev server only
 npm run build    # Production build
 npm start        # Production server
 ```
-
-## Tech Stack
-
-- **Frontend**: TypeScript, Leaflet.js, Vite
-- **Backend**: Express, TypeScript
-- **AI**: Direct API calls (no agent framework)
 
 ## License
 
