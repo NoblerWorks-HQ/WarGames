@@ -15,14 +15,9 @@ AI-powered geopolitical strategy simulation. Three great powers - NATO, Russia, 
 
 ![Nuclear Launch Detected](screenshots/wargames-nuclear-launch-detected.png)
 
-<p align="center">
-  <img src="screenshots/wargames-nuke-explosion.png" width="49%" alt="Nuclear explosion" />
-  <img src="screenshots/wargames-new-game.png" width="49%" alt="New game - starting positions" />
-</p>
+![Nuclear Explosion](screenshots/wargames-nuke-explosion.png)
 
-<p align="center">
-  <img src="screenshots/wargames-endgame.png" width="49%" alt="End game - victory screen" />
-</p>
+![End Game - Victory Screen](screenshots/wargames-endgame.png)
 
 ## Quick Start
 
