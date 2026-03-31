@@ -557,22 +557,13 @@ export class FlatMap {
 
       const isNuke = event.type === 'nuke'
 
-      // Nuke warning symbol at map center before launch
+      // Nuke warning - full screen overlay
       if (isNuke) {
-        const midLat = (fromTerritory.lat + toTerritory.lat) / 2
-        const midLng = (fromTerritory.lng + toTerritory.lng) / 2
-        const nukeSymbol = L.marker([midLat, midLng], {
-          icon: L.divIcon({
-            className: 'nuke-warning-symbol',
-            html: '<div style="color:#ff4400;font-size:48px;text-shadow:0 0 20px rgba(255,68,0,0.8),0 0 40px rgba(255,68,0,0.4);text-align:center;line-height:1;">&#9762;</div>',
-            iconSize: [60, 60],
-            iconAnchor: [30, 30]
-          })
-        }).addTo(this.arcLayer)
-        // Fade out as arc travels
-        setTimeout(() => {
-          try { this.arcLayer.removeLayer(nukeSymbol) } catch {}
-        }, 2000)
+        const overlay = document.createElement('div')
+        overlay.className = 'nuke-warning-overlay'
+        overlay.innerHTML = '<div class="nuke-warning-content">&#9762;<div class="nuke-warning-text">NUCLEAR LAUNCH DETECTED</div></div>'
+        document.body.appendChild(overlay)
+        setTimeout(() => overlay.remove(), 2500)
       }
 
       // Create trail polyline - WHITE for visibility against all territory colors

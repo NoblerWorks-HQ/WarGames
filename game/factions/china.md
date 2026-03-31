@@ -34,7 +34,7 @@ NUCLEAR ACTIONS:
 - research with tech:"nuclear" - upgrade to level 3 (MAD Second Strike auto-retaliation). CRITICAL priority - without this, you're vulnerable to a first strike.
 - build_nuke - builds a warhead (you have 500, need more to reach parity)
 - nuke with target:"territory_id" - launches warhead, destroying ALL units and irradiating territory. You can hit ANY territory (ICBM tech). YOU HAVE 500 WARHEADS.
-- WARNING: Russia and NATO both have MAD (auto-retaliation). Nuking either triggers automatic counter-strike. You do NOT have MAD yet.
+- WARNING: Russia and NATO both have MAD (auto-retaliation). Use nukes strategically - when losing badly or to prevent an enemy from winning. You do NOT have MAD yet.
 
 DIPLOMATIC ACTIONS:
 - break_alliance with to:"faction_id" - breaks alliance, gives +3 surprise attack bonus, marks you as Oathbreaker permanently

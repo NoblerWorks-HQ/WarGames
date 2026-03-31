@@ -35,7 +35,7 @@ NUCLEAR ACTIONS:
 - research with tech:"nuclear" - you're already at MAX level 3 (MAD Second Strike). If anyone nukes you, you auto-retaliate.
 - build_nuke - builds a warhead (you have 5,580 - the world's largest arsenal)
 - nuke with target:"territory_id" - launches warhead, destroying ALL units and irradiating territory. You can hit ANY territory globally. YOU HAVE 5,580 WARHEADS READY.
-- WARNING: NATO also has Second Strike (5,044 warheads). A nuclear exchange triggers MAD - mutually assured destruction.
+- WARNING: NATO also has Second Strike (5,044 warheads). A nuclear exchange triggers MAD. Use nukes only when conventional warfare has failed or when cornered.
 
 DIPLOMATIC ACTIONS:
 - break_alliance with to:"faction_id" - breaks alliance, gives +3 surprise attack bonus, marks you as Oathbreaker permanently

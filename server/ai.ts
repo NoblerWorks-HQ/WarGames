@@ -37,8 +37,8 @@ Format: {"orders":[{"action":"move|attack|fortify|recruit|trade|spy|research|dip
       console.log(`[${factionId}] Invalid format - no orders array`)
       return { orders: [], reasoning: 'Invalid response format - forfeited turn' }
     }
-    // Cap at 3 orders
-    parsed.orders = parsed.orders.slice(0, 3)
+    // Cap at 5 orders
+    parsed.orders = parsed.orders.slice(0, 5)
     console.log(
       `[${factionId}] Got ${parsed.orders.length} orders: ${parsed.orders.map((o) => o.action).join(', ')}`
     )
