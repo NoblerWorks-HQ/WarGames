@@ -1,0 +1,37 @@
+name: Feature request
+description: Suggest a new mechanic, provider, or capability
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is missing
+      description: Describe the gap, not the implementation. What can't you do today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like to see
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the game does this touch?
+      options:
+        - Game engine (turn resolution, combat, research, diplomacy)
+        - AI layer (providers, prompts, order parsing)
+        - Faction personas
+        - Map and UI
+        - Deployment, config, or docs
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: cost
+    attributes:
+      label: Cost impact
+      description: >
+        Every turn makes four model calls. If this adds calls, lengthens prompts, or needs a
+        larger model, say so - it is the first thing that gets weighed.

@@ -1,0 +1,60 @@
+name: Bug report
+description: Something in the simulation behaves incorrectly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Most bugs here are one of three things: a provider key
+        problem, a model returning something the order parser rejected, or an engine edge
+        case in turn resolution. The fields below are the ones that tell them apart.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you see, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. npm run dev
+        2. Start Game
+        3. Around turn 6, ...
+    validations:
+      required: true
+  - type: input
+    id: providers
+    attributes:
+      label: Provider per faction
+      description: Which model commanded each faction, including the narrator.
+      placeholder: "NATO=anthropic, Russia=gemini, China=openai, narrator=gemini"
+    validations:
+      required: true
+  - type: input
+    id: turn
+    attributes:
+      label: Which turn did it break on?
+      placeholder: "turn 6 of ~20"
+  - type: textarea
+    id: server-log
+    attributes:
+      label: Server console output
+      description: >
+        The output from `npm run server` around the failing turn. Parse failures and
+        provider timeouts both surface here. Remove any API keys before pasting.
+      render: shell
+  - type: input
+    id: env
+    attributes:
+      label: Node version and OS
+      placeholder: "Node 22.4.0, macOS 15"
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have removed API keys and `.env` contents from everything pasted above
+          required: true
