@@ -64,7 +64,11 @@ Found by a read-only survey of the repo on 2026-09-18; none was tracked before. 
       (2026-09-18: the turn cap already exists - `maxTurns: 20` in `game/initial-world.json`,
       enforced at `server/engine.ts:335`, and the interval stops itself at `engine.ts:76`, so
       a game is at most 80 calls, not open-ended. README now says so.)
-- [ ] No rate limiting or retry/backoff on provider calls - a 429 mid-turn loses the turn.
+- [x] ~~No rate limiting or retry/backoff on provider calls - a 429 mid-turn loses the turn.~~
+      ✅ 2026-09-18 `server/retry.ts` wraps all three providers' `generate()`: 429, 5xx and
+      network failures retried twice (1s/2s jittered backoff, `Retry-After` honoured, 8s cap);
+      401/400/timeouts are not. `server/retry.test.ts` covers it with mocked fetch (10 tests).
+      No client-side rate limiter was added - the 4-calls-per-turn cadence is already bounded.
 - [x] ~~Game state is in-memory only, so a server restart drops every game in progress.
       Acceptable for local play; state it in the README rather than leaving it implied.~~ ✅ 2026-09-18 README Architecture > State now says it (single GameEngine in server/index.ts, no disk writes, no save/load)
 

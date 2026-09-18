@@ -15,6 +15,7 @@
  */
 
 import type { GoogleGenerativeAI } from '@google/generative-ai'
+import { httpError, withRetry } from './retry.js'
 
 export interface AIProvider {
   name: string
@@ -111,7 +112,10 @@ function createGeminiProvider(): AIProvider {
           ...(thinkingConfig ? { thinkingConfig } : {}),
         },
       })
-      const result = await withTimeout(model.generateContent(prompt), 15000, 'gemini')
+      // 429/5xx are retried with backoff (server/retry.ts); the SDK error carries `status`.
+      const result = await withRetry('gemini', () =>
+        withTimeout(model.generateContent(prompt), 15000, 'gemini')
+      )
       return result.response.text().trim()
     },
     checkModel() {
@@ -152,28 +156,27 @@ function createOpenAIProvider(): AIProvider {
     modelEnvVar: 'OPENAI_MODEL',
     keyEnvVar: 'OPENAI_API_KEY',
     async generate(prompt: string): Promise<string> {
-      const res = await withTimeout(
-        fetch(`${baseUrl}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${key}`,
-          },
-          body: JSON.stringify({
-            model,
-            messages: [{ role: 'user', content: prompt }],
-            ...tuning,
+      return withRetry('openai', async () => {
+        const res = await withTimeout(
+          fetch(`${baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${key}`,
+            },
+            body: JSON.stringify({
+              model,
+              messages: [{ role: 'user', content: prompt }],
+              ...tuning,
+            }),
           }),
-        }),
-        15000,
-        'openai'
-      )
-      if (!res.ok) {
-        const err = await res.text()
-        throw new Error(`OpenAI API error ${res.status}: ${err.slice(0, 200)}`)
-      }
-      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] }
-      return (data.choices?.[0]?.message?.content || '').trim()
+          15000,
+          'openai'
+        )
+        if (!res.ok) throw await httpError('OpenAI', res)
+        const data = (await res.json()) as { choices?: { message?: { content?: string } }[] }
+        return (data.choices?.[0]?.message?.content || '').trim()
+      })
     },
     async checkModel() {
       const result = await fetchModelCheck(`${baseUrl}/models/${encodeURIComponent(model)}`, {
@@ -208,31 +211,30 @@ function createAnthropicProvider(): AIProvider {
     modelEnvVar: 'ANTHROPIC_MODEL',
     keyEnvVar: 'ANTHROPIC_API_KEY',
     async generate(prompt: string): Promise<string> {
-      const res = await withTimeout(
-        fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': key,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({
-            model,
-            max_tokens: 4096,
-            messages: [{ role: 'user', content: prompt }],
-            ...thinking,
+      return withRetry('anthropic', async () => {
+        const res = await withTimeout(
+          fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': key,
+              'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify({
+              model,
+              max_tokens: 4096,
+              messages: [{ role: 'user', content: prompt }],
+              ...thinking,
+            }),
           }),
-        }),
-        15000,
-        'anthropic'
-      )
-      if (!res.ok) {
-        const err = await res.text()
-        throw new Error(`Anthropic API error ${res.status}: ${err.slice(0, 200)}`)
-      }
-      const data = (await res.json()) as { content?: { type: string; text?: string }[] }
-      const textBlock = data.content?.find(b => b.type === 'text')
-      return (textBlock?.text || '').trim()
+          15000,
+          'anthropic'
+        )
+        if (!res.ok) throw await httpError('Anthropic', res)
+        const data = (await res.json()) as { content?: { type: string; text?: string }[] }
+        const textBlock = data.content?.find(b => b.type === 'text')
+        return (textBlock?.text || '').trim()
+      })
     },
     checkModel() {
       return fetchModelCheck(`https://api.anthropic.com/v1/models/${encodeURIComponent(model)}`, {
