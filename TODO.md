@@ -12,7 +12,7 @@ project, the game is the harness for it. Last commit 2026-08-31.
 
 Found by a read-only survey of the repo on 2026-09-18; none was tracked before. Ranked by payoff for the effort. 🟠 = a real bug or risk, not only tidiness.
 
-- [ ] Move the 13 `spawn*Effect` / `trigger*ScreenEffect` methods (lines 303-1080) out of the `FlatMap` class in `src/flatmap.ts` (1,226 lines) into `src/effects/*.ts` behind a small `Effect` interface. M, visual only.
+- [x] ~~Move the 13 `spawn*Effect` / `trigger*ScreenEffect` methods (lines 303-1080) out of the `FlatMap` class in `src/flatmap.ts` (1,226 lines) into `src/effects/*.ts` behind a small `Effect` interface. M, visual only.~~ ✅ 2026-09-18 `src/effects/{types,screen,impacts,local}.ts` behind an `EffectHost` interface; `flatmap.ts` 1,226 -> 582 lines. typecheck + build pass; all 10 effects spawned and cleared in a browser with no runtime errors.
 
 ## 🔴 Stale model defaults - public and wrong
 

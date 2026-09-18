@@ -140,6 +140,7 @@ server/
 src/
   main.ts           - Frontend entry point
   flatmap.ts        - Leaflet map rendering, territory overlays, UI
+  effects/          - Map and screen animations (impacts, per-territory effects)
   style.css         - Styles
 game/
   factions/         - Faction persona markdown files
