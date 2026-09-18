@@ -47,15 +47,18 @@ project, the game is the harness for it. Last commit 2026-08-31.
       docs. A reader who starts a game and walks away has an open-ended bill. At minimum,
       document the per-hour cost of the default Gemini config and add a max-turns setting.
 - [ ] No rate limiting or retry/backoff on provider calls - a 429 mid-turn loses the turn.
-- [ ] Game state is in-memory only, so a server restart drops every game in progress.
-      Acceptable for local play; state it in the README rather than leaving it implied.
+- [x] ~~Game state is in-memory only, so a server restart drops every game in progress.
+      Acceptable for local play; state it in the README rather than leaving it implied.~~ ✅ 2026-09-18 README Architecture > State now says it (single GameEngine in server/index.ts, no disk writes, no save/load)
 
 ## 🟢 Game and docs
 
 - [ ] Factions are named after real sitting heads of state. Fine for a satire piece, worth
       a deliberate decision rather than an inherited one now that the repo is public.
-- [ ] `game/rules.md` and `game/tech-tree.json` are not referenced from the README, so the
-      moddable parts of the game are effectively undiscoverable.
-- [ ] Nuclear exchange is in the action list and in the screenshots but has no documented
-      resolution rules - the one mechanic most readers will look for.
+- [x] ~~`game/rules.md` and `game/tech-tree.json` are not referenced from the README, so the
+      moddable parts of the game are effectively undiscoverable.~~ ✅ 2026-09-18 README "Modding the game" section links all of game/
+- [x] ~~Nuclear exchange is in the action list and in the screenshots but has no documented
+      resolution rules - the one mechanic most readers will look for.~~ ✅ 2026-09-18 README "Nuclear exchange" section, written from server/engine.ts
+- [ ] engine.ts comment says a nuked territory is irradiated "for 5 turns", but nothing restores
+      it: `originalResources` is saved and never used, so the yield is wiped permanently. Decide
+      which is intended and fix the code or the comment (README documents current behaviour).
 - [x] ~~Write TODO.md~~ ✅ done 2026-09-06

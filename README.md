@@ -126,7 +126,7 @@ Each turn (every 10-15 seconds):
 - **Frontend**: Vite + TypeScript + Leaflet map with territory overlays, combat effects, and game summary
 - **Backend**: Express server (port 3001) with game engine and AI provider abstraction
 - **AI**: Direct API calls to Gemini, OpenAI, or Anthropic (no agent framework - just raw API)
-- **State**: In-memory game state, turn history stored per-game
+- **State**: In-memory only. The server holds a single `GameEngine` instance (`server/index.ts`) and never writes game state to disk, so restarting the server (including a `tsx watch` reload during `npm run dev`) drops the game in progress and its turn history. There is no save/load.
 
 ### Project Structure
 
@@ -144,7 +144,32 @@ src/
 game/
   factions/         - Faction persona markdown files
   initial-world.json - Starting game state and map configuration
+  rules.md          - Full game rules (map, resources, units, combat, victory)
+  tech-tree.json    - Research tracks, costs and effects
 ```
+
+### Modding the game
+
+The game content lives in `game/` and is the place to start if you want to change how War Games plays:
+
+- [`game/rules.md`](game/rules.md) - the rules the factions play by: map, terrain, resources, units, combat and victory conditions.
+- [`game/tech-tree.json`](game/tech-tree.json) - the four research tracks (military, economic, intelligence, nuclear), their costs and effects.
+- [`game/initial-world.json`](game/initial-world.json) - starting territories, adjacency, resources and units.
+- [`game/factions/`](game/factions/) - the persona prompt each faction's AI plays.
+
+Note that `rules.md` and `tech-tree.json` describe the rules; the numbers that are actually enforced (costs, ranges, combat) are in `server/engine.ts`, so change both when you rebalance.
+
+### Nuclear exchange
+
+How nukes resolve in `server/engine.ts`:
+
+1. **Research** - the `nuclear` track has three levels, costing 5/8/10 knowledge plus 3/5/8 uranium.
+2. **Build** (`build_nuke`, needs nuclear 1) - a warhead costs 10 gold + 5 uranium, or 8 gold + 3 uranium from nuclear 2. At nuclear 3, every warhead you build also costs each other faction 5 influence (deterrence).
+3. **Launch** (`nuke`, needs a warhead in stock) - below nuclear 2 the target must be adjacent to a territory you own; from nuclear 2 (ICBMs) any territory is in range. You cannot nuke your own territory.
+4. **Effect** - every unit in the target territory is destroyed, whoever owns it. The territory loses its fortification, becomes unowned, and its resource yield is wiped. It is not restored later: it stays neutral with no yield until someone moves a unit in and captures it.
+5. **Second strike** - if the territory belonged to a faction with nuclear 3 and at least one warhead, that faction automatically fires one back at a random territory the attacker owns, with the same effect. Range is not checked for the retaliation, and a retaliation does not trigger another one.
+
+Orders resolve in faction order (NATO, Russia, China) within a turn, so a strike lands before any later faction's orders for that turn are resolved.
 
 ### Game Engine
 
