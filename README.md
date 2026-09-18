@@ -197,6 +197,7 @@ npm run server   # Server only
 npm run client   # Vite dev server only
 npm run build    # Production build
 npm run typecheck # Type-check client + server (tsc --noEmit)
+npm test         # Turn-resolver tests (vitest, AI mocked - no API key needed)
 npm start        # Production server
 ```
 

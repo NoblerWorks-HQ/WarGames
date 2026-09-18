@@ -36,10 +36,14 @@ Found by a read-only survey of the repo on 2026-09-18; none was tracked before. 
 
 ## 🟠 No safety net
 
-- [ ] No tests at all. The turn resolver in `server/engine.ts` (combat, territory change,
+- [x] ~~No tests at all. The turn resolver in `server/engine.ts` (combat, territory change,
       resource gain, diplomacy) is pure logic over `game/initial-world.json` and is the
       obvious place to start - it needs no API key to exercise.
-      When tests land, add an `npm test` step to `.github/workflows/ci.yml`.
+      When tests land, add an `npm test` step to `.github/workflows/ci.yml`.~~
+      ✅ 2026-09-18 `server/engine.test.ts` (vitest, 23 tests, AI layer mocked, dice pinned):
+      resource gain, move/fortify/recruit/research, combat win/draw/repel, mercenaries,
+      alliances and oathbreaking, nukes, maxTurns and domination victory. `npm test` is in CI
+      and in CONTRIBUTING/README.
 - [x] ~~No CI, and no `.github/workflows/` at all. Once tests exist, add typecheck + lint +
       test + build on push, matching the pattern in `rocketscan/.github/workflows/ci.yml`.~~
       ✅ 2026-09-18 `.github/workflows/ci.yml` runs typecheck + lint + build on push to main

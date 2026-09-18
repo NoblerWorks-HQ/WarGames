@@ -1,7 +1,6 @@
 name: CI
 
-# Typecheck, lint and build on every push to main and every pull request.
-# There is no test suite yet - add `npm test` here when one exists.
+# Typecheck, lint, test and build on every push to main and every pull request.
 
 on:
   push:
@@ -19,7 +18,7 @@ permissions:
 
 jobs:
   quality:
-    name: Typecheck / Lint / Build
+    name: Typecheck / Lint / Test / Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -38,6 +37,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Test
+        run: npm test
 
       - name: Build
         run: npm run build
