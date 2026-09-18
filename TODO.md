@@ -8,6 +8,12 @@ project, the game is the harness for it. Last commit 2026-08-31.
 
 ---
 
+## 🟡 Refactor survey (2026-09-18)
+
+Found by a read-only survey of the repo on 2026-09-18; none was tracked before. Ranked by payoff for the effort. 🟠 = a real bug or risk, not only tidiness.
+
+- [ ] Move the 13 `spawn*Effect` / `trigger*ScreenEffect` methods (lines 303-1080) out of the `FlatMap` class in `src/flatmap.ts` (1,226 lines) into `src/effects/*.ts` behind a small `Effect` interface. M, visual only.
+
 ## 🔴 Stale model defaults - public and wrong
 
 - [x] ~~Anthropic default `claude-sonnet-4-6` -> `claude-sonnet-5` in code, `.env.example` and
