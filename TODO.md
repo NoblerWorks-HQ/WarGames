@@ -43,8 +43,11 @@ Found by a read-only survey of the repo on 2026-09-18; none was tracked before. 
       test + build on push, matching the pattern in `rocketscan/.github/workflows/ci.yml`.
 - [x] ~~Add `"typecheck": "tsc --noEmit"`~~ ✅ done 2026-09-17. One `tsconfig.json` covers both
       `src/` and `server/`; it reports 0 errors. Wire it into CI when CI exists.
-- [ ] No lint config. This is a public repo taking contributions (`CONTRIBUTING.md` exists)
-      with nothing to enforce a house style on a PR.
+- [x] ~~No lint config. This is a public repo taking contributions (`CONTRIBUTING.md` exists)
+      with nothing to enforce a house style on a PR.~~ ✅ 2026-09-18 `eslint.config.js`
+      (ESLint 9 + typescript-eslint recommended), `npm run lint` exits 0; the 33 existing
+      findings were fixed, not suppressed, except the unused `originalResources` in
+      `server/engine.ts`, which is the open "irradiated for 5 turns" item below.
 
 ## 🟡 Cost and abuse surface
 

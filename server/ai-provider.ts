@@ -14,6 +14,8 @@
  *   GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY
  */
 
+import type { GoogleGenerativeAI } from '@google/generative-ai'
+
 export interface AIProvider {
   name: string
   /** The model id this provider sends, after env overrides. */
@@ -89,7 +91,7 @@ function createGeminiProvider(): AIProvider {
   // minimal thinking already.
   const thinkingConfig = modelId.startsWith('gemini-2.5') ? { thinkingBudget: 0 } : undefined
 
-  let client: any = null
+  let client: GoogleGenerativeAI | null = null
 
   return {
     name: 'gemini',
@@ -109,7 +111,7 @@ function createGeminiProvider(): AIProvider {
           ...(thinkingConfig ? { thinkingConfig } : {}),
         },
       })
-      const result: any = await withTimeout(model.generateContent(prompt), 15000, 'gemini')
+      const result = await withTimeout(model.generateContent(prompt), 15000, 'gemini')
       return result.response.text().trim()
     },
     checkModel() {
@@ -170,7 +172,7 @@ function createOpenAIProvider(): AIProvider {
         const err = await res.text()
         throw new Error(`OpenAI API error ${res.status}: ${err.slice(0, 200)}`)
       }
-      const data = (await res.json()) as any
+      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] }
       return (data.choices?.[0]?.message?.content || '').trim()
     },
     async checkModel() {
@@ -228,8 +230,8 @@ function createAnthropicProvider(): AIProvider {
         const err = await res.text()
         throw new Error(`Anthropic API error ${res.status}: ${err.slice(0, 200)}`)
       }
-      const data = (await res.json()) as any
-      const textBlock = data.content?.find((b: any) => b.type === 'text')
+      const data = (await res.json()) as { content?: { type: string; text?: string }[] }
+      const textBlock = data.content?.find(b => b.type === 'text')
       return (textBlock?.text || '').trim()
     },
     checkModel() {

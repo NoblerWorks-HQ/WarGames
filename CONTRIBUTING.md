@@ -18,8 +18,9 @@ check the server console before anything else.
 
 ## Before you open a PR
 
-1. **`npm run build` must pass.** There is no test suite yet, so the type checker is the only
-   automated gate this project has. Do not add `any` to get past it.
+1. **`npm run typecheck`, `npm run lint` and `npm run build` must pass.** There is no test
+   suite yet, so the type checker and ESLint are the only automated gates this project has.
+   Do not add `any` (lint rejects it) or an `eslint-disable` to get past them.
 2. **Play a full game.** Turn resolution, combat, research, diplomacy and the nuke path all
    live in `server/engine.ts`, and a change to one of them routinely breaks another. Watching
    ten turns resolve catches more than any amount of reading will.

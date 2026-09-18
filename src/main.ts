@@ -9,12 +9,6 @@ const FACTION_COLORS: Record<string, string> = {
   china: '#f1c40f'      // Yellow - China
 }
 
-const FACTION_NAMES: Record<string, string> = {
-  nato: 'USA/NATO',
-  russia: 'RUSSIA',
-  china: 'CHINA'
-}
-
 const EVENT_ICONS: Record<string, string> = {
   move: '\u2794',
   attack: '\u2694',

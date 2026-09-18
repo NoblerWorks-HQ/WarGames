@@ -243,13 +243,13 @@ export class GameEngine {
 
     // Collect resources from owned territories
     for (const [factionId, faction] of Object.entries(this.state.factions)) {
-      let foodCost = faction.units.length
+      const foodCost = faction.units.length
       faction.resources.food -= foodCost
       if (faction.resources.food < 0) faction.resources.food = 0
       faction.resources.knowledge += 1
 
       // Territory resources
-      for (const [tId, territory] of Object.entries(this.state.map.territories)) {
+      for (const territory of Object.values(this.state.map.territories)) {
         if (territory.owner === factionId) {
           for (const [res, amount] of Object.entries(territory.resources)) {
             (faction.resources as Record<string, number>)[res] = ((faction.resources as Record<string, number>)[res] || 0) + amount
@@ -258,7 +258,7 @@ export class GameEngine {
       }
 
       // Continent bonus
-      for (const [contId, cont] of Object.entries(this.state.map.continents)) {
+      for (const cont of Object.values(this.state.map.continents)) {
         if (cont.territories.every(t => this.state.map.territories[t]?.owner === factionId)) {
           for (const [res, amount] of Object.entries(cont.bonus)) {
             (faction.resources as Record<string, number>)[res] = ((faction.resources as Record<string, number>)[res] || 0) + amount
@@ -268,7 +268,7 @@ export class GameEngine {
 
       // Trade Networks (economic tech 1) - coastal territories produce +1 gold
       if (faction.tech.economic >= 1) {
-        for (const [tId, territory] of Object.entries(this.state.map.territories)) {
+        for (const territory of Object.values(this.state.map.territories)) {
           if (territory.owner === factionId && territory.terrain === 'coast') {
             faction.resources.gold += 1
           }
@@ -349,7 +349,7 @@ export class GameEngine {
     // Get narrative
     const narrative = await getNarrative(
       `Turn ${turn}. Events: ${eventSummary}. ` +
-      Object.entries(this.state.factions).map(([id, f]) => `${f.name}: ${f.territoryCount} territories, ${f.resources.gold}g`).join('. ')
+      Object.values(this.state.factions).map(f => `${f.name}: ${f.territoryCount} territories, ${f.resources.gold}g`).join('. ')
     )
     this.addChat('observer', 'narrator', 'The Chronicler', narrative)
 
@@ -421,7 +421,6 @@ export class GameEngine {
           if (defenders.length > 0) {
             return this.resolveCombat(factionId, unit, defenders[0].owner, defenders[0].unit, moveTo)
           } else {
-            const prevOwner = territory.owner
             territory.owner = factionId
             const tName = territory.name
             return { type: 'capture', faction: factionId, description: `${fName} captures undefended ${tName}`, from: oldTerritory, to: moveTo }
@@ -651,13 +650,15 @@ export class GameEngine {
         const targetOwner = targetTerritory.owner
 
         // Destroy ALL units in the territory
-        for (const [fid, f] of Object.entries(this.state.factions)) {
+        for (const f of Object.values(this.state.factions)) {
           f.units = f.units.filter(u => u.territory !== targetTId)
         }
 
         // Remove fortification and set territory to irradiated (no owner, no resources for 5 turns)
         targetTerritory.fortified = false
         targetTerritory.owner = null
+        // Saved but never restored - see TODO.md ("irradiated for 5 turns")
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const originalResources = { ...targetTerritory.resources }
         targetTerritory.resources = {}
 
@@ -675,7 +676,7 @@ export class GameEngine {
               const [retaliationTId, retaliationTerritory] = attackerTerritories[Math.floor(Math.random() * attackerTerritories.length)]
               defender.nukes--
               // Destroy units in retaliation territory
-              for (const [fid, f] of Object.entries(this.state.factions)) {
+              for (const f of Object.values(this.state.factions)) {
                 f.units = f.units.filter(u => u.territory !== retaliationTId)
               }
               retaliationTerritory.fortified = false

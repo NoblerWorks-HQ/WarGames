@@ -52,13 +52,20 @@ interface AnimatedArc {
   currentStep: number
   type: string
   cancelled: boolean
+  // Glow ring that follows the head (nukes only)
+  nukeGlow?: L.CircleMarker
+  // Attacker's color, used for the impact effect
+  factionColor?: string
 }
+
+type CountryGeoJSON = GeoJSON.FeatureCollection<GeoJSON.Polygon | GeoJSON.MultiPolygon, { name: string }>
 
 export class FlatMap {
   private map: L.Map
-  private geojsonData: any = null
+  private geojsonData: CountryGeoJSON | null = null
   private countryLayers: Map<string, L.GeoJSON> = new Map()
   private territoryMarkers: Map<string, L.CircleMarker> = new Map()
+  private territoryLabels: Map<string, L.Marker> = new Map()
   private unitMarkers: Map<string, L.Marker> = new Map()
   private arcLayer: L.LayerGroup
   private activeArcs: AnimatedArc[] = []
@@ -131,7 +138,7 @@ export class FlatMap {
 
   // Fix polygons that cross the antimeridian (e.g. Russia's far east)
   // by shifting far-west polygons (+360 lng) so they appear on the right side
-  private fixAntimeridian(geojson: any) {
+  private fixAntimeridian(geojson: CountryGeoJSON) {
     const shiftRing = (ring: number[][]) => {
       for (const coord of ring) {
         coord[0] += 360
@@ -139,11 +146,11 @@ export class FlatMap {
     }
 
     for (const feature of geojson.features) {
-      if (!feature.geometry || !feature.geometry.coordinates) continue
+      const geometry = feature.geometry
+      if (!geometry || !geometry.coordinates) continue
 
-      const type = feature.geometry.type
-      if (type === 'MultiPolygon') {
-        for (const polygon of feature.geometry.coordinates) {
+      if (geometry.type === 'MultiPolygon') {
+        for (const polygon of geometry.coordinates) {
           const ring = polygon[0]
           if (!ring || ring.length === 0) continue
           const avgLng = ring.reduce((sum: number, c: number[]) => sum + c[0], 0) / ring.length
@@ -151,12 +158,12 @@ export class FlatMap {
             for (const r of polygon) shiftRing(r)
           }
         }
-      } else if (type === 'Polygon') {
-        const ring = feature.geometry.coordinates[0]
+      } else if (geometry.type === 'Polygon') {
+        const ring = geometry.coordinates[0]
         if (ring && ring.length > 0) {
           const avgLng = ring.reduce((sum: number, c: number[]) => sum + c[0], 0) / ring.length
           if (avgLng < -160) {
-            for (const r of feature.geometry.coordinates) shiftRing(r)
+            for (const r of geometry.coordinates) shiftRing(r)
           }
         }
       }
@@ -166,8 +173,9 @@ export class FlatMap {
   private async loadGeoJSON() {
     try {
       const res = await fetch('/countryborders.json')
-      this.geojsonData = await res.json()
-      this.fixAntimeridian(this.geojsonData)
+      const geojson = (await res.json()) as CountryGeoJSON
+      this.fixAntimeridian(geojson)
+      this.geojsonData = geojson
       // Re-render if state arrived before GeoJSON loaded
       if (this.pendingState) {
         this.render(this.pendingState)
@@ -193,8 +201,7 @@ export class FlatMap {
         arc.trail.setLatLngs(arc.points.slice(0, arc.currentStep + 1))
         arc.head.setLatLng(arc.points[arc.currentStep])
         // Move nuke glow with head
-        const glow = (arc.head as any)._nukeGlow as L.CircleMarker | undefined
-        if (glow) glow.setLatLng(arc.points[arc.currentStep])
+        if (arc.nukeGlow) arc.nukeGlow.setLatLng(arc.points[arc.currentStep])
         arc.currentStep++
       } else {
         // Arc complete - hold full arc visible, then spawn impact
@@ -207,9 +214,9 @@ export class FlatMap {
           if (arc.type === 'nuke') {
             spawnNukeBlast(this.effectHost, target)
           } else if (arc.type === 'combat' || arc.type === 'attack') {
-            spawnCombatImpact(this.effectHost, target, (arc as any)._factionColor || '#ff3366')
+            spawnCombatImpact(this.effectHost, target, arc.factionColor || '#ff3366')
           } else if (arc.type === 'capture') {
-            spawnCaptureImpact(this.effectHost, target, (arc as any)._factionColor || '#ffffff')
+            spawnCaptureImpact(this.effectHost, target, arc.factionColor || '#ffffff')
           }
         }, impactDelay)
         // Remove arc trail after impact has had time to show
@@ -217,9 +224,8 @@ export class FlatMap {
           try {
             this.arcLayer.removeLayer(arc.trail)
             this.arcLayer.removeLayer(arc.head)
-            const glow = (arc.head as any)._nukeGlow as L.CircleMarker | undefined
-            if (glow) this.arcLayer.removeLayer(glow)
-          } catch {}
+            if (arc.nukeGlow) this.arcLayer.removeLayer(arc.nukeGlow)
+          } catch { /* already removed */ }
         }, impactDelay + 1500)
         arcsToRemove.push(i)
       }
@@ -252,7 +258,7 @@ export class FlatMap {
         try {
           this.arcLayer.removeLayer(blast.ring)
           this.arcLayer.removeLayer(blast.flash)
-        } catch {}
+        } catch { /* already removed */ }
         blastsToRemove.push(i)
       }
     }
@@ -269,7 +275,7 @@ export class FlatMap {
       effect.update(t)
       if (age > effect.duration) {
         for (const el of effect.elements) {
-          try { this.arcLayer.removeLayer(el) } catch {}
+          try { this.arcLayer.removeLayer(el) } catch { /* already removed */ }
         }
         effectsToRemove.push(i)
       }
@@ -289,17 +295,16 @@ export class FlatMap {
       try {
         this.arcLayer.removeLayer(arc.trail)
         this.arcLayer.removeLayer(arc.head)
-        const glow = (arc.head as any)._nukeGlow as L.CircleMarker | undefined
-        if (glow) this.arcLayer.removeLayer(glow)
-      } catch {}
+        if (arc.nukeGlow) this.arcLayer.removeLayer(arc.nukeGlow)
+      } catch { /* already removed */ }
     })
     this.activeArcs = []
     this.activeBlasts.forEach(b => {
-      try { this.arcLayer.removeLayer(b.ring); this.arcLayer.removeLayer(b.flash) } catch {}
+      try { this.arcLayer.removeLayer(b.ring); this.arcLayer.removeLayer(b.flash) } catch { /* already removed */ }
     })
     this.activeBlasts = []
     this.activeEffects.forEach(e => {
-      for (const el of e.elements) { try { this.arcLayer.removeLayer(el) } catch {} }
+      for (const el of e.elements) { try { this.arcLayer.removeLayer(el) } catch { /* already removed */ } }
     })
     this.activeEffects = []
 
@@ -308,6 +313,8 @@ export class FlatMap {
     this.countryLayers.clear()
     this.territoryMarkers.forEach(marker => this.map.removeLayer(marker))
     this.territoryMarkers.clear()
+    this.territoryLabels.forEach(label => this.map.removeLayer(label))
+    this.territoryLabels.clear()
 
     // Reset state
     this.lastTurn = -1
@@ -393,8 +400,9 @@ export class FlatMap {
       }).addTo(this.arcLayer)
 
       // Nuke gets a glow ring around the head
+      let nukeGlow: L.CircleMarker | undefined
       if (isNuke) {
-        const glow = L.circleMarker(points[0], {
+        nukeGlow = L.circleMarker(points[0], {
           radius: 22,
           color: '#ff4400',
           fillColor: '#ff8800',
@@ -402,10 +410,6 @@ export class FlatMap {
           weight: 1,
           opacity: 0.5
         }).addTo(this.arcLayer)
-        // Animate glow with head in the arc loop
-        const origAnimate = this.activeArcs
-        // Track the glow to move with head
-        ;(head as any)._nukeGlow = glow
       }
 
       const arcObj: AnimatedArc = {
@@ -414,9 +418,11 @@ export class FlatMap {
         points,
         currentStep: 0,
         type: event.type,
-        cancelled: false
+        cancelled: false,
+        // Tracked so the glow moves with the head in the arc loop
+        nukeGlow,
+        factionColor: FACTION_COLORS[event.faction] || headColor
       }
-      ;(arcObj as any)._factionColor = FACTION_COLORS[event.faction] || headColor
       this.activeArcs.push(arcObj)
     }
   }
@@ -497,8 +503,6 @@ export class FlatMap {
 
     // Territory center markers - update in-place or create
     for (const [tId, territory] of Object.entries(state.map.territories)) {
-      const color = territory.owner ? FACTION_COLORS[territory.owner] : NEUTRAL_COLOR
-
       const existingMarker = this.territoryMarkers.get(tId)
       if (existingMarker) {
         // Update existing marker
@@ -565,7 +569,7 @@ export class FlatMap {
             iconAnchor: [60, 7]
           })
         }).addTo(this.map)
-        this.territoryMarkers.set(`${tId}-label`, label as any)
+        this.territoryLabels.set(tId, label)
 
         this.territoryMarkers.set(tId, marker)
       }
