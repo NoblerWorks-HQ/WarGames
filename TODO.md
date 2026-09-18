@@ -39,8 +39,11 @@ Found by a read-only survey of the repo on 2026-09-18; none was tracked before. 
 - [ ] No tests at all. The turn resolver in `server/engine.ts` (combat, territory change,
       resource gain, diplomacy) is pure logic over `game/initial-world.json` and is the
       obvious place to start - it needs no API key to exercise.
-- [ ] No CI, and no `.github/workflows/` at all. Once tests exist, add typecheck + lint +
-      test + build on push, matching the pattern in `rocketscan/.github/workflows/ci.yml`.
+      When tests land, add an `npm test` step to `.github/workflows/ci.yml`.
+- [x] ~~No CI, and no `.github/workflows/` at all. Once tests exist, add typecheck + lint +
+      test + build on push, matching the pattern in `rocketscan/.github/workflows/ci.yml`.~~
+      ✅ 2026-09-18 `.github/workflows/ci.yml` runs typecheck + lint + build on push to main
+      and on PRs. The test step is added with the first tests (item above).
 - [x] ~~Add `"typecheck": "tsc --noEmit"`~~ ✅ done 2026-09-17. One `tsconfig.json` covers both
       `src/` and `server/`; it reports 0 errors. Wire it into CI when CI exists.
 - [x] ~~No lint config. This is a public repo taking contributions (`CONTRIBUTING.md` exists)
