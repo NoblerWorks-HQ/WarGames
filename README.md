@@ -92,12 +92,16 @@ ANTHROPIC_API_KEY=...
 | `RUSSIA_AI_PROVIDER` | _(uses global)_ | Override provider for Russia faction |
 | `CHINA_AI_PROVIDER` | _(uses global)_ | Override provider for China faction |
 | `NARRATOR_AI_PROVIDER` | _(uses global)_ | Override provider for the narrator |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model override |
-| `OPENAI_MODEL` | `gpt-4o-mini` | OpenAI model override |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Gemini model override |
+| `OPENAI_MODEL` | `gpt-5.6-luna` | OpenAI model override |
+| `OPENAI_REASONING_EFFORT` | `none` | Reasoning effort for GPT-5+ / o-series models (use `minimal` for older GPT-5 models that lack `none`) |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible endpoint (for local models, Azure, etc.) |
-| `ANTHROPIC_MODEL` | `claude-sonnet-4-6` | Anthropic model override |
+| `ANTHROPIC_MODEL` | `claude-sonnet-5` | Anthropic model override |
+| `SKIP_MODEL_CHECK` | _(unset)_ | Set to `1` to skip the startup model check |
 
 The `OPENAI_BASE_URL` option means you can use any OpenAI-compatible API, including local models via Ollama, LM Studio, or vLLM.
+
+**Startup model check.** When the server boots it asks each configured provider whether its model id exists, using the provider's model-metadata endpoint (no tokens are spent). If a model id is unknown or an API key is rejected, the server refuses to start and names the env var to fix. If the provider can't be reached (offline, timeout, rate limit, server error) it logs a warning and starts anyway. With a custom `OPENAI_BASE_URL`, a missing model is only a warning, because not every OpenAI-compatible server implements the models endpoint. Set `SKIP_MODEL_CHECK=1` to skip the check.
 
 ## How It Works
 
@@ -154,7 +158,7 @@ game/
 
 ### Cost Controls
 
-- Default to cheapest models (Gemini Flash, GPT-4o-mini)
+- Default to cheap, fast models (Gemini 3.5 Flash-Lite, GPT-5.6 Luna, Claude Sonnet 5)
 - Compact JSON format for all orders (no prose in game data)
 - 15-second timeouts prevent runaway calls
 
@@ -165,6 +169,7 @@ npm run dev      # Client + server (hot reload)
 npm run server   # Server only
 npm run client   # Vite dev server only
 npm run build    # Production build
+npm run typecheck # Type-check client + server (tsc --noEmit)
 npm start        # Production server
 ```
 

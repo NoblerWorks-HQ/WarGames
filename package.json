@@ -8,6 +8,7 @@
     "client": "vite",
     "server": "tsx watch server/index.ts",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "start": "tsx server/index.ts"
   },
   "keywords": [],

@@ -4,10 +4,10 @@ import cors from 'cors'
 import { GameEngine } from './engine.js'
 
 // Validate AI provider on startup
-import { validateProvider, logProviderConfig } from './ai-provider.js'
+import { validateProviders, logProviderConfig } from './ai-provider.js'
 try {
-  validateProvider()
   logProviderConfig()
+  await validateProviders()
 } catch (err) {
   console.error(`\n${'='.repeat(60)}`)
   console.error('AI PROVIDER NOT CONFIGURED')

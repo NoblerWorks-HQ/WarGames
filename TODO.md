@@ -10,17 +10,23 @@ project, the game is the harness for it. Last commit 2026-08-31.
 
 ## 🔴 Stale model defaults - public and wrong
 
-- [ ] `server/ai-provider.ts:106` defaults Anthropic to `claude-sonnet-4-6`. The current
-      Claude family is Claude 5 - `claude-sonnet-5` is the like-for-like replacement, with
-      `claude-opus-5` if the narrator wants the better prose. Anyone cloning this repo
-      today gets the stale id from `.env.example` and the README table too, so fix all
-      three in the same pass.
-- [ ] `server/ai-provider.ts:68` defaults OpenAI to `gpt-4o-mini` and `:47` defaults Gemini
-      to `gemini-2.5-flash`. Re-check both against what those providers currently ship
-      before the next release - a default that 404s is the worst first-run experience an
-      open-source project can offer.
-- [ ] Nothing validates a model id at startup. A bad default surfaces as a failed turn
-      mid-game rather than as an error on boot. Fail fast in the provider constructor.
+- [x] ~~Anthropic default `claude-sonnet-4-6` -> `claude-sonnet-5` in code, `.env.example` and
+      README~~ ✅ done 2026-09-17. Also stopped sending `temperature` (Sonnet 5 / Opus 5
+      reject it with a 400) and send `thinking: disabled` to keep turns fast.
+- [x] ~~Re-check OpenAI and Gemini defaults~~ ✅ done 2026-09-17, verified against the
+      providers' model pages: OpenAI `gpt-4o-mini` -> `gpt-5.6-luna` (OpenAI's named
+      replacement for its small models on the deprecations page); Gemini `gemini-2.5-flash`
+      -> `gemini-3.5-flash-lite` (stable, same $0.30/$2.50 price point as 2.5 Flash;
+      3.8 Flash is newer but 2.5x the price and cannot switch thinking off).
+      GPT-5+ models now get `max_completion_tokens` + `reasoning_effort` (default `none`,
+      `OPENAI_REASONING_EFFORT` overrides); Gemini 3.x no longer gets `thinkingBudget: 0`.
+- [x] ~~Validate model ids at startup~~ ✅ done 2026-09-17. `validateProviders()` runs at boot
+      for every role's provider: unknown model or rejected key refuses to start and names the
+      env var; unreachable provider warns and continues; `SKIP_MODEL_CHECK=1` skips it.
+- [ ] 2026-09-24: run one real game per provider with the new defaults (needs a real key for
+      each) - the defaults were checked against the docs and the key-rejected path against the
+      live APIs, but no turn has been played on `gpt-5.6-luna`, `gemini-3.5-flash-lite` or
+      `claude-sonnet-5` yet.
 
 ## 🟠 No safety net
 
@@ -29,8 +35,8 @@ project, the game is the harness for it. Last commit 2026-08-31.
       obvious place to start - it needs no API key to exercise.
 - [ ] No CI, and no `.github/workflows/` at all. Once tests exist, add typecheck + lint +
       test + build on push, matching the pattern in `rocketscan/.github/workflows/ci.yml`.
-- [ ] No `typecheck` script despite being a TypeScript project on both sides. Add
-      `"typecheck": "tsc --noEmit"`.
+- [x] ~~Add `"typecheck": "tsc --noEmit"`~~ ✅ done 2026-09-17. One `tsconfig.json` covers both
+      `src/` and `server/`; it reports 0 errors. Wire it into CI when CI exists.
 - [ ] No lint config. This is a public repo taking contributions (`CONTRIBUTING.md` exists)
       with nothing to enforce a house style on a PR.
 
