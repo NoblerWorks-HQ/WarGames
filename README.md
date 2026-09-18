@@ -186,6 +186,7 @@ Orders resolve in faction order (NATO, Russia, China) within a turn, so a strike
 - Default to cheap, fast models (Gemini 3.5 Flash-Lite, GPT-5.6 Luna, Claude Sonnet 5)
 - Compact JSON format for all orders (no prose in game data)
 - 15-second timeouts prevent runaway calls
+- Games end after `maxTurns` turns (20, set in `game/initial-world.json`) and the turn loop stops itself, so one game is at most 80 provider calls (three factions + the narrator per turn)
 
 ## Development
 

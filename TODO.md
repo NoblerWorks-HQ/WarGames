@@ -43,9 +43,11 @@ project, the game is the harness for it. Last commit 2026-08-31.
 ## 🟡 Cost and abuse surface
 
 - [ ] Every turn calls the provider four times (three factions + narrator) every 10-15
-      seconds, with no cap on turns, no token ceiling and no cost estimate anywhere in the
-      docs. A reader who starts a game and walks away has an open-ended bill. At minimum,
-      document the per-hour cost of the default Gemini config and add a max-turns setting.
+      seconds, with no token ceiling and no cost estimate anywhere in the docs. Document the
+      per-game cost of the default Gemini config in README "Cost Controls".
+      (2026-09-18: the turn cap already exists - `maxTurns: 20` in `game/initial-world.json`,
+      enforced at `server/engine.ts:335`, and the interval stops itself at `engine.ts:76`, so
+      a game is at most 80 calls, not open-ended. README now says so.)
 - [ ] No rate limiting or retry/backoff on provider calls - a 429 mid-turn loses the turn.
 - [x] ~~Game state is in-memory only, so a server restart drops every game in progress.
       Acceptable for local play; state it in the README rather than leaving it implied.~~ ✅ 2026-09-18 README Architecture > State now says it (single GameEngine in server/index.ts, no disk writes, no save/load)
