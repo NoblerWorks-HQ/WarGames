@@ -89,6 +89,7 @@
         </div>
         <div class="faction-allies">Allies: <span class="f-allies">None</span></div>
         <div class="faction-ai"><span class="f-ai">-</span><span class="f-cost"></span></div>
+        <input class="seat-input" list="seat-options" maxlength="120" spellcheck="false" aria-label="Model for this seat" title="Model for this seat in the next game: provider or provider:model. Empty uses the server configuration.">
       </div>
 
       <!-- Russia -->
@@ -120,6 +121,7 @@
         </div>
         <div class="faction-allies">Allies: <span class="f-allies">None</span></div>
         <div class="faction-ai"><span class="f-ai">-</span><span class="f-cost"></span></div>
+        <input class="seat-input" list="seat-options" maxlength="120" spellcheck="false" aria-label="Model for this seat" title="Model for this seat in the next game: provider or provider:model. Empty uses the server configuration.">
       </div>
 
       <!-- China -->
@@ -151,6 +153,7 @@
         </div>
         <div class="faction-allies">Allies: <span class="f-allies">None</span></div>
         <div class="faction-ai"><span class="f-ai">-</span><span class="f-cost"></span></div>
+        <input class="seat-input" list="seat-options" maxlength="120" spellcheck="false" aria-label="Model for this seat" title="Model for this seat in the next game: provider or provider:model. Empty uses the server configuration.">
       </div>
 
       <!-- Combined chat feed -->
@@ -172,6 +175,16 @@
   <div id="capture-toasts"></div>
 
   <!-- End-of-game summary modal -->
+  <div id="replay-bar" class="replay-bar hidden" role="region" aria-label="Replay">
+    <button class="btn" id="replay-prev" title="Previous turn" aria-label="Previous turn">&#9664;</button>
+    <button class="btn" id="replay-play" title="Play / pause">PLAY</button>
+    <button class="btn" id="replay-next" title="Next turn" aria-label="Next turn">&#9654;</button>
+    <input type="range" id="replay-slider" min="1" max="1" value="1" aria-label="Turn">
+    <span class="replay-turn" id="replay-turn">T1</span>
+    <span class="replay-caption" id="replay-caption"></span>
+    <button class="btn btn-reset" id="replay-exit">EXIT REPLAY</button>
+  </div>
+
   <div id="game-summary-modal" class="summary-modal hidden">
     <div class="summary-modal-content" id="summary-modal-body">
       <!-- Populated by JS -->
@@ -191,5 +204,6 @@
 
 
   <script type="module" src="/src/main.ts"></script>
+  <datalist id="seat-options"></datalist>
 </body>
 </html>

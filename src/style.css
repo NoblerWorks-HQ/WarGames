@@ -281,6 +281,8 @@ body::before {
   font-size: 10px;
   color: var(--text-muted);
 }
+.seat-input { width: 100%; margin-top: 4px; box-sizing: border-box; background: rgba(255, 255, 255, 0.04); color: inherit; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 3px; padding: 3px 6px; font: inherit; font-size: 10px; }
+.seat-input:disabled { display: none; }
 .faction-ai .f-cost { color: var(--text-dim); font-variant-numeric: tabular-nums; }
 
 .faction-allies {
@@ -1146,3 +1148,11 @@ body::before {
 .wr-result { font-size: 11px; color: var(--text-dim); margin-bottom: 3px; }
 .wr-result.invalid { color: #e57373; }
 .wr-result.forfeit { color: #e57373; }
+
+/* Replay */
+.replay-bar { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 900; display: flex; align-items: center; gap: 8px; width: min(980px, calc(100vw - 32px)); padding: 8px 12px; background: rgba(10, 12, 16, 0.92); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px; box-sizing: border-box; }
+.replay-bar.hidden { display: none; }
+.replay-bar input[type=range] { width: 160px; flex: none; accent-color: #9aa0a6; }
+.replay-turn { font-variant-numeric: tabular-nums; font-size: 0.75rem; min-width: 52px; }
+.replay-caption { flex: 1; min-width: 0; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 700px) { .replay-bar { flex-wrap: wrap; } .replay-caption { flex-basis: 100%; white-space: normal; } }

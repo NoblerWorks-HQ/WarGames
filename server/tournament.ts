@@ -20,6 +20,8 @@ export interface Entrant {
   /** Unique display name, e.g. "anthropic/claude-sonnet-5" (with "#2" for a repeated entry). */
   label: string
   spec: ProviderSpec
+  /** The model this entrant actually runs (spec.model, or the provider's default). */
+  model: string
 }
 
 export interface ScheduledGame {
@@ -94,9 +96,10 @@ export interface TournamentResults {
 export function makeEntrants(specs: ProviderSpec[], defaultModel: (s: ProviderSpec) => string): Entrant[] {
   const seen: Record<string, number> = {}
   return specs.map(spec => {
-    const base = `${spec.provider}/${spec.model ?? defaultModel(spec)}`
+    const model = spec.model ?? defaultModel(spec)
+    const base = `${spec.provider}/${model}`
     seen[base] = (seen[base] ?? 0) + 1
-    return { label: seen[base] > 1 ? `${base}#${seen[base]}` : base, spec }
+    return { label: seen[base] > 1 ? `${base}#${seen[base]}` : base, spec, model }
   })
 }
 
@@ -129,6 +132,7 @@ export async function runTournament(cfg: TournamentConfig, deps: RunDeps): Promi
   const log = deps.log ?? (() => {})
   const games = schedule(cfg)
   const byLabel = Object.fromEntries(cfg.entrants.map(e => [e.label, e.spec]))
+  const entrantOf = Object.fromEntries(cfg.entrants.map(e => [e.label, e]))
   const records: GameRecord[] = []
   let spent = 0
   let stoppedForBudget = false
@@ -145,6 +149,7 @@ export async function runTournament(cfg: TournamentConfig, deps: RunDeps): Promi
       engine.restore(saved)
       engine.stop()
     } else {
+      engine.seats = Object.fromEntries(Object.entries(game.seats).map(([seat, label]) => [seat, { provider: entrantOf[label].spec.provider, model: entrantOf[label].model }]))
       engine.reset()
       engine.gameId = game.id
       if (cfg.maxTurns) engine.state.game.maxTurns = cfg.maxTurns
@@ -231,7 +236,7 @@ export function summarize(cfg: TournamentConfig, records: GameRecord[], spent: n
   )
   return {
     id: cfg.id,
-    config: { ...cfg, entrants: cfg.entrants.map(e => ({ label: e.label, ...e.spec })) },
+    config: { ...cfg, entrants: cfg.entrants.map(e => ({ label: e.label, provider: e.spec.provider, model: e.model })) },
     scheduled: records.length,
     finished: done.length,
     incomplete: records.length - done.length,

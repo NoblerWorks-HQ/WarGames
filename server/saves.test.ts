@@ -214,3 +214,37 @@ describe('scorecard', () => {
     expect(card.rows.find(r => r.faction === 'russia')).toMatchObject({ nukesLaunched: 1, betrayals: 1, won: false, provider: null })
   })
 })
+
+describe('replay frames and seats', () => {
+  it('every turn stores the board after it, matching the live state at that moment', async () => {
+    const e = new GameEngine({ seed: 3 })
+    e.reset()
+    orders.russia = [{ action: 'attack', unit: 'russia-art-1', target: 'eastern_europe' }]
+    await e.executeTurn()
+    const live = JSON.parse(JSON.stringify(e.state))
+    orders.russia = []
+    orders.nato = [{ action: 'fortify', territory: 'western_na' }]
+    await e.executeTurn()
+    const [f1, f2] = e.turnHistory.map(t => t.frame!)
+    for (const [id, t] of Object.entries(live.map.territories) as [string, { owner: string | null; fortified: boolean; mercenaries: number }][]) {
+      expect(f1.territories[id]).toMatchObject({ owner: t.owner, fortified: t.fortified, mercenaries: t.mercenaries })
+    }
+    expect(f1.factions.russia.units).toEqual(live.factions.russia.units)
+    expect(f1.factions.nato.score).toBe(live.factions.nato.score)
+    expect(f1.territories.western_na.fortified).toBe(false)
+    expect(f2.territories.western_na.fortified).toBe(true)
+    // Frames are copies: later turns don't rewrite earlier ones
+    e.state.factions.russia.units[0].hp = 99
+    expect(f1.factions.russia.units[0].hp).not.toBe(99)
+  })
+
+  it('records the seat models in each new game and brings them back on load', () => {
+    const e = new GameEngine({ seed: 1 })
+    e.seats = { nato: { provider: 'anthropic', model: 'a' }, russia: { provider: 'gemini', model: 'g' }, china: { provider: 'openai', model: 'o' } }
+    e.reset()
+    expect(e.state.game.seats).toEqual(e.seats)
+    const loaded = new GameEngine({ seed: 2 })
+    loaded.restore(e.snapshot())
+    expect(loaded.seats).toEqual(e.seats)
+  })
+})

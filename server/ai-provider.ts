@@ -344,6 +344,34 @@ export function parseProviderSpec(text: string): ProviderSpec {
   return model ? { provider, model } : { provider }
 }
 
+/** What each vendor needs, for listing choices without building a provider (no key required). */
+const VENDORS = [
+  { provider: 'gemini', keyEnvVar: 'GEMINI_API_KEY', modelEnvVar: 'GEMINI_MODEL', defaultModel: 'gemini-3.5-flash-lite' },
+  { provider: 'openai', keyEnvVar: 'OPENAI_API_KEY', modelEnvVar: 'OPENAI_MODEL', defaultModel: 'gpt-5.6-luna' },
+  { provider: 'anthropic', keyEnvVar: 'ANTHROPIC_API_KEY', modelEnvVar: 'ANTHROPIC_MODEL', defaultModel: 'claude-sonnet-5' },
+]
+
+export interface VendorInfo {
+  provider: string
+  /** True when its API key is set, so it can actually play. */
+  configured: boolean
+  /** The model it uses unless a seat names another. */
+  model: string
+}
+
+export function listVendors(): VendorInfo[] {
+  return VENDORS.map(v => ({ provider: v.provider, configured: !!process.env[v.keyEnvVar], model: process.env[v.modelEnvVar] || v.defaultModel }))
+}
+
+/** The provider and model a role would use right now, without building it. */
+export function seatFor(role: string): { provider: string; model: string } {
+  const pin = rolePins[role]
+  const name = pin?.provider ?? (process.env[`${role.toUpperCase()}_AI_PROVIDER`] || process.env.AI_PROVIDER || 'gemini').toLowerCase()
+  const provider = PROVIDER_ALIASES[name] ?? name
+  const vendor = listVendors().find(v => v.provider === provider)
+  return { provider, model: pin?.model ?? vendor?.model ?? 'unknown' }
+}
+
 /** Per-role provider pins that win over the *_AI_PROVIDER env vars (the tournament runner sets these per game). */
 let rolePins: Record<string, ProviderSpec> = {}
 

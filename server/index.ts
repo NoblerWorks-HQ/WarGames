@@ -9,9 +9,11 @@ import { clampInterval, isAllowedOrigin } from './http.js'
 import { parseSeed } from './rng.js'
 import { SaveStore } from './saves.js'
 import { buildScorecard } from './scorecard.js'
+import { renderRecap } from './recap.js'
 
 // Validate AI provider on startup
-import { validateProviders, logProviderConfig, structuredOutputEnabled } from './ai-provider.js'
+import { validateProviders, logProviderConfig, structuredOutputEnabled, listVendors, parseProviderSpec, providerFor, seatFor, setRoleProviders } from './ai-provider.js'
+import type { ProviderSpec } from './ai-provider.js'
 try {
   logProviderConfig()
   await validateProviders()
@@ -73,6 +75,23 @@ app.get('/api/scenarios', (_req, res) => {
   res.json({ scenarios: listScenarios(), current: engine.scenario })
 })
 
+// A self-contained HTML recap of the current game, or of a saved one (?id=...)
+app.get('/api/recap', (req, res) => {
+  const id = req.query.id
+  let game
+  try {
+    game = typeof id === 'string' && id ? saves.load(id) : engine.snapshot()
+  } catch (err) {
+    res.status(404).json({ error: err instanceof Error ? err.message : String(err) })
+    return
+  }
+  res.type('html')
+  if (req.query.download !== undefined) res.attachment(`wargames-${game.id || 'game'}.html`)
+  // The page has no scripts; forbid them outright in case a browser ever finds one.
+  res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:")
+  res.send(renderRecap(game))
+})
+
 // Saved games, newest first
 app.get('/api/games', (_req, res) => {
   res.json(saves.list())
@@ -87,6 +106,9 @@ app.post('/api/load', (req, res) => {
   }
   try {
     engine.restore(saves.load(id))
+    // Carry on with the models that played it; older saves fall back to the env configuration.
+    const seats = engine.state.game.seats
+    setRoleProviders(seats ? Object.fromEntries(Object.entries(seats).map(([seat, m]) => [seat, { provider: m.provider, model: m.model }])) : null)
   } catch (err) {
     res.status(404).json({ error: err instanceof Error ? err.message : String(err) })
     return
@@ -110,8 +132,41 @@ app.get('/api/turns', (req, res) => {
   res.json(turns)
 })
 
+const SEATS = ['nato', 'russia', 'china']
+
+/**
+ * Optional per-seat models from the browser: { nato: "anthropic:claude-opus-5", russia: "gemini", ... }.
+ * A seat left out (or empty) uses the env configuration. Returns an error message, or null when applied.
+ */
+async function applySeats(raw: unknown): Promise<string | null> {
+  if (raw !== undefined && (typeof raw !== 'object' || raw === null)) return 'seats must be an object'
+  const pins: Record<string, ProviderSpec> = {}
+  for (const [seat, value] of Object.entries((raw ?? {}) as Record<string, unknown>)) {
+    if (!SEATS.includes(seat)) return `unknown seat "${seat}"`
+    if (value === '' || value === null || value === undefined) continue
+    if (typeof value !== 'string' || value.length > 120) return `seat ${seat}: expected "provider" or "provider:model"`
+    try {
+      pins[seat] = parseProviderSpec(value)
+      const p = providerFor(pins[seat])
+      // A model typed in the browser is checked once, before any turn spends money on it.
+      const check = await p.checkModel()
+      if (check.status === 'bad-model' || check.status === 'bad-key') return `seat ${seat}: ${p.name} ${check.status === 'bad-key' ? 'rejected the API key' : `has no model "${p.model}"`}`
+    } catch (err) {
+      return `seat ${seat}: ${err instanceof Error ? err.message : String(err)}`
+    }
+  }
+  setRoleProviders(pins)
+  engine.seats = Object.fromEntries(SEATS.map(seat => [seat, seatFor(seat)]))
+  return null
+}
+
+// Which vendors can play (key set) and what each seat uses now
+app.get('/api/providers', (_req, res) => {
+  res.json({ vendors: listVendors(), seats: Object.fromEntries(SEATS.map(seat => [seat, seatFor(seat)])) })
+})
+
 // Start game
-app.post('/api/start', (req, res) => {
+app.post('/api/start', async (req, res) => {
   const intervalMs = clampInterval(req.body?.intervalMs)
   const requested = req.body?.scenario
   if (requested !== undefined) {
@@ -120,6 +175,13 @@ app.post('/api/start', (req, res) => {
       return
     }
     if (!engine.running) engine.scenario = requested
+  }
+  if (!engine.running) {
+    const error = await applySeats(req.body?.seats)
+    if (error) {
+      res.status(400).json({ error })
+      return
+    }
   }
   console.log(`\n>>> /api/start called with intervalMs=${intervalMs}`)
   engine.start(intervalMs)
@@ -140,7 +202,14 @@ app.post('/api/resume', (_req, res) => {
 })
 
 // Play exactly one turn, then stay paused. Starts a new game if none is running.
-app.post('/api/step', (_req, res) => {
+app.post('/api/step', async (req, res) => {
+  if (!engine.running && !engine.turnExecuting) {
+    const error = await applySeats(req.body?.seats)
+    if (error) {
+      res.status(400).json({ error })
+      return
+    }
+  }
   if (!engine.step()) {
     res.status(409).json({ error: 'a turn is already in progress' })
     return
@@ -193,7 +262,9 @@ app.listen(PORT, HOST, () => {
   console.log('  POST /api/resume - Resume a paused game')
   console.log('  POST /api/step   - Play one turn, then pause')
   console.log('  POST /api/interval - Change turn speed')
+  console.log('  GET  /api/providers - Vendors and seat models')
   console.log('  GET  /api/games  - Saved games')
+  console.log('  GET  /api/recap  - Shareable HTML recap')
   console.log('  POST /api/load   - Load a saved game')
   console.log('  GET  /api/scorecard - Per-seat results')
   console.log('  POST /api/stop   - Stop game')

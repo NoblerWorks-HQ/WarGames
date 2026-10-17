@@ -1,6 +1,6 @@
 import { FlatMap } from './flatmap.js'
 import { WarRoom } from './warroom.js'
-import type { GameState, ChatMessage, GameEvent, GameControl, UsageSnapshot, SaveSummary, Scorecard } from './types.js'
+import type { GameState, ChatMessage, GameEvent, GameControl, UsageSnapshot, SaveSummary, Scorecard, TurnResult } from './types.js'
 import 'leaflet/dist/leaflet.css'
 import './style.css'
 
@@ -45,6 +45,8 @@ class WarGamesApp {
   private control: GameControl = { running: false, paused: false, turnExecuting: false, intervalMs: 15000 }
   private speedSynced = false
   private warRoom: WarRoom
+  /** While replaying: the finished game's turns and its final state, restored on exit. */
+  private replay: { turns: TurnResult[]; final: GameState; at: number; timer: ReturnType<typeof setInterval> | null } | null = null
 
   constructor() {
     const container = document.getElementById('globe-container')!
@@ -64,6 +66,7 @@ class WarGamesApp {
       await this.fetchState()
     })
     void this.loadScenarios()
+    void this.loadProviders()
     const loadSelect = document.getElementById('load-select') as HTMLSelectElement
     loadSelect.addEventListener('mousedown', () => void this.refreshSaves())
     loadSelect.addEventListener('focus', () => void this.refreshSaves())
@@ -71,6 +74,13 @@ class WarGamesApp {
       const id = loadSelect.value
       loadSelect.value = ''
       if (id) void this.loadGame(id)
+    })
+    document.getElementById('replay-prev')!.addEventListener('click', () => this.replayGo(-1))
+    document.getElementById('replay-next')!.addEventListener('click', () => this.replayGo(1))
+    document.getElementById('replay-play')!.addEventListener('click', () => this.replayToggle())
+    document.getElementById('replay-exit')!.addEventListener('click', () => this.exitReplay())
+    document.getElementById('replay-slider')!.addEventListener('input', e => {
+      if (this.replay) this.showReplayTurn(Number((e.target as HTMLInputElement).value))
     })
     document.getElementById('btn-warroom')!.addEventListener('click', () => {
       if (this.state) this.warRoom.open(this.chatMessages, this.state)
@@ -124,6 +134,7 @@ class WarGamesApp {
 
   /** A new game is about to begin on the server: drop everything shown from the last one. */
   private clearLocal() {
+    this.exitReplay()
     this.stopPolling()
     this.stopTimer()
     this.startTime = 0
@@ -141,7 +152,8 @@ class WarGamesApp {
 
   private async startGame() {
     if (!this.control.running) this.clearLocal()
-    await this.post('/api/start', { intervalMs: this.speedMs() })
+    const res = await this.post('/api/start', { intervalMs: this.speedMs(), seats: this.seatChoices() })
+    if (!res.ok) return this.reportRefusal(res)
     await this.fetchState()
   }
 
@@ -158,8 +170,9 @@ class WarGamesApp {
   /** Play one turn and stay paused; starts a fresh game if none is running. */
   private async stepGame() {
     if (!this.control.running) this.clearLocal()
-    const res = await this.post('/api/step')
+    const res = await this.post('/api/step', this.control.running ? undefined : { seats: this.seatChoices() })
     if (res.ok) await this.fetchState()
+    else if (res.status === 400) await this.reportRefusal(res)
   }
 
   private async stopGame() {
@@ -167,6 +180,43 @@ class WarGamesApp {
     this.stopPolling()
     this.stopTimer()
     await this.fetchState()
+  }
+
+  /** Fill the seat pickers: configured vendors, each alone and with its default model. */
+  private async loadProviders() {
+    try {
+      const { vendors, seats }: { vendors: { provider: string; configured: boolean; model: string }[]; seats: Record<string, { provider: string; model: string }> } =
+        await (await fetch('/api/providers')).json()
+      const list = document.getElementById('seat-options')!
+      list.replaceChildren(...vendors.filter(v => v.configured).flatMap(v => [new Option(`${v.provider} (${v.model})`, v.provider), new Option('', `${v.provider}:${v.model}`)]))
+      const missing = vendors.filter(v => !v.configured).map(v => v.provider)
+      for (const fid of ['nato', 'russia', 'china']) {
+        const input = document.querySelector<HTMLInputElement>(`#faction-${fid} .seat-input`)!
+        input.placeholder = `${seats[fid].provider}:${seats[fid].model}`
+        if (missing.length) input.title += ` No API key for: ${missing.join(', ')}.`
+      }
+    } catch (err) {
+      console.error('Failed to list providers:', err)
+    }
+  }
+
+  /** Seat -> typed model, for the next game. Empty seats are left to the server. */
+  private seatChoices(): Record<string, string> {
+    const out: Record<string, string> = {}
+    for (const fid of ['nato', 'russia', 'china']) {
+      const v = document.querySelector<HTMLInputElement>(`#faction-${fid} .seat-input`)!.value.trim()
+      if (v) out[fid] = v
+    }
+    return out
+  }
+
+  /** A start/step the server refused (e.g. a bad model name) is shown, not swallowed. */
+  private async reportRefusal(res: Response) {
+    if (res.ok) return
+    const body = await res.json().catch(() => ({}))
+    const statusEl = document.getElementById('game-status')!
+    statusEl.textContent = `NOT STARTED: ${body.error ?? res.status}`
+    statusEl.style.color = '#e74c3c'
   }
 
   /** Scenario names come from the server; the picker only works between games. */
@@ -242,6 +292,7 @@ class WarGamesApp {
     this.toggle('btn-resume', running && paused)
     this.toggle('btn-stop', running)
     ;(document.getElementById('scenario-select') as HTMLSelectElement).disabled = running
+    document.querySelectorAll<HTMLInputElement>('.seat-input').forEach(i => (i.disabled = running || !!this.replay))
     ;(document.getElementById('btn-step') as HTMLButtonElement).disabled = turnExecuting
     if (!this.speedSynced) {
       this.speedSynced = true
@@ -368,8 +419,8 @@ class WarGamesApp {
       }
     } else {
       const paused = this.control.running && this.control.paused
-      statusEl.textContent = paused ? 'PAUSED' : this.state.game.status === 'active' ? 'ACTIVE' : 'WAITING'
-      statusEl.style.color = paused ? '#f39c12' : '#4caf50'
+      statusEl.textContent = this.replay ? 'REPLAY' : paused ? 'PAUSED' : this.state.game.status === 'active' ? 'ACTIVE' : 'WAITING'
+      statusEl.style.color = this.replay ? '#9aa0a6' : paused ? '#f39c12' : '#4caf50'
     }
 
     this.updateElapsed()
@@ -525,12 +576,15 @@ class WarGamesApp {
         <div class="summary-timeline">${timelineHtml || '<div style="color:var(--text-muted)">No recaps recorded.</div>'}</div>
       </div>
       <div class="summary-actions">
+        <button class="btn summary-btn-details" id="btn-replay">REPLAY</button>
+        <a class="btn summary-btn-details" id="btn-recap" href="/api/recap?download" download title="A single HTML page with the result, scorecard, control chart and bulletins">SHARE RECAP</a>
         <button class="btn summary-btn-details" id="btn-full-details">FULL DETAILS</button>
         <button class="btn summary-btn-close" id="btn-close-summary">CLOSE</button>
       </div>
     `
 
     // Wire up buttons
+    document.getElementById('btn-replay')!.addEventListener('click', () => void this.startReplay())
     document.getElementById('btn-full-details')!.addEventListener('click', () => {
       this.showFullDetails(body)
     })
@@ -570,6 +624,89 @@ class WarGamesApp {
     } catch {
       host.textContent = 'Scorecard unavailable.'
     }
+  }
+
+  /** Replay a finished game from its per-turn frames (saves from before frames existed can't). */
+  private async startReplay() {
+    if (!this.state || this.state.game.status !== 'finished') return
+    const turns: TurnResult[] = await (await fetch('/api/turns')).json()
+    const playable = turns.filter(t => t.frame)
+    if (!playable.length) {
+      alert('This game was saved before replays were recorded.')
+      return
+    }
+    document.getElementById('game-summary-modal')!.classList.add('hidden')
+    this.replay = { turns: playable, final: this.state, at: 0, timer: null }
+    const slider = document.getElementById('replay-slider') as HTMLInputElement
+    slider.min = String(playable[0].turn)
+    slider.max = String(playable.at(-1)!.turn)
+    document.getElementById('replay-bar')!.classList.remove('hidden')
+    this.map.reset()
+    this.lastDisplayedTurn = 0
+    this.showReplayTurn(playable[0].turn)
+  }
+
+  /** Draw the board as it stood after `turn`, with that turn's events animated. */
+  private showReplayTurn(turn: number) {
+    const r = this.replay
+    if (!r) return
+    const idx = r.turns.findIndex(t => t.turn === turn)
+    if (idx < 0) return
+    const t = r.turns[idx]
+    const frame = t.frame!
+    const state: GameState = structuredClone(r.final)
+    for (const [id, ft] of Object.entries(frame.territories)) {
+      const territory = state.map.territories[id]
+      if (territory) Object.assign(territory, { owner: ft.owner, fortified: ft.fortified, mercenaries: ft.mercenaries })
+    }
+    for (const [id, ff] of Object.entries(frame.factions)) {
+      if (state.factions[id]) Object.assign(state.factions[id], ff)
+    }
+    const last = idx === r.turns.length - 1
+    state.game.turn = t.turn
+    state.game.status = last ? r.final.game.status : 'active'
+    state.game.victor = last ? r.final.game.victor : null
+    state.recentEvents = t.events
+    state.control = { running: false, paused: false, turnExecuting: false, intervalMs: r.final.control?.intervalMs ?? 15000 }
+    if (t.turn < r.at) this.map.reset()
+    r.at = t.turn
+    this.lastDisplayedTurn = t.turn - 1
+    this.state = state
+    this.render()
+    ;(document.getElementById('replay-slider') as HTMLInputElement).value = String(t.turn)
+    document.getElementById('replay-turn')!.textContent = `T${t.turn} / ${r.turns.at(-1)!.turn}`
+    document.getElementById('replay-caption')!.textContent = t.narrative || t.events.filter(e => e.type !== 'invalid').map(e => e.description).join('. ')
+  }
+
+  private replayGo(delta: number) {
+    const r = this.replay
+    if (!r) return
+    const idx = r.turns.findIndex(t => t.turn === r.at)
+    const next = r.turns[idx + delta]
+    if (next) this.showReplayTurn(next.turn)
+    else if (delta > 0) this.replayToggle(false)
+  }
+
+  private replayToggle(play?: boolean) {
+    const r = this.replay
+    if (!r) return
+    const on = play ?? !r.timer
+    if (r.timer) clearInterval(r.timer)
+    r.timer = on ? setInterval(() => this.replayGo(1), 3000) : null
+    document.getElementById('replay-play')!.textContent = on ? 'PAUSE' : 'PLAY'
+  }
+
+  private exitReplay() {
+    const r = this.replay
+    if (!r) return
+    if (r.timer) clearInterval(r.timer)
+    this.replay = null
+    document.getElementById('replay-bar')!.classList.add('hidden')
+    document.getElementById('replay-play')!.textContent = 'PLAY'
+    this.map.reset()
+    this.state = r.final
+    this.lastDisplayedTurn = r.final.game.turn
+    this.render()
   }
 
   private showFullDetails(container: HTMLElement) {

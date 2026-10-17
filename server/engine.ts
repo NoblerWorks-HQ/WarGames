@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import type { GameState, Unit, Order, FactionOrders, TurnResult, GameEvent, ChatMessage } from './types.js'
+import type { GameState, Unit, Order, FactionOrders, TurnResult, GameEvent, ChatMessage, TurnFrame, SeatModel } from './types.js'
 import { getFactionOrders, getNarrative } from './ai.js'
 import { mulberry32, randomSeed } from './rng.js'
 import type { SeededRng } from './rng.js'
@@ -143,6 +143,8 @@ export class GameEngine {
   scenario: string
   /** Whether faction replies use the vendors' native structured output (recorded in the game for provenance). */
   structuredOutput: boolean
+  /** Seat -> model, recorded in each new game (set by the server or the tournament runner). */
+  seats: Record<string, SeatModel> | undefined
   /** False skips the narrator call each turn (tournaments: no prose, no cost). */
   narrate: boolean
   /** Names the save file; set when a game begins. */
@@ -178,6 +180,7 @@ export class GameEngine {
     this.state = loadScenario(this.scenario)
     this.state.game.scenario = this.scenario
     this.state.game.structuredOutput = this.structuredOutput
+    if (this.seats) this.state.game.seats = structuredClone(this.seats)
     this.turnHistory = []
     this.chatLog = []
     this.pendingAlliances = new Map()
@@ -349,6 +352,7 @@ export class GameEngine {
     this.seed = g.seed
     this.scenario = g.state.game.scenario ?? 'default'
     this.structuredOutput = g.state.game.structuredOutput ?? false
+    this.seats = g.state.game.seats
     const rng = mulberry32(g.seed)
     if (g.rngState !== null) rng.setState(g.rngState)
     this.rng = rng
@@ -748,7 +752,8 @@ export class GameEngine {
       timestamp: new Date().toISOString(),
       orders: allOrders,
       events,
-      narrative
+      narrative,
+      frame: this.frame(),
     }
     this.turnHistory.push(turnResult)
     try {
@@ -758,6 +763,20 @@ export class GameEngine {
     }
 
     return turnResult
+  }
+
+  /** The parts of the board a replay needs to redraw this moment. */
+  private frame(): TurnFrame {
+    const territories: TurnFrame['territories'] = {}
+    for (const [id, t] of Object.entries(this.state.map.territories)) {
+      territories[id] = { owner: t.owner, fortified: t.fortified, mercenaries: t.mercenaries, ...(t.fallout ? { fallout: true } : {}) }
+    }
+    const factions: TurnFrame['factions'] = {}
+    for (const [id, f] of Object.entries(this.state.factions)) {
+      const { units, score, territoryCount, resources, tech, nukes, alliances, oathbreaker } = f
+      factions[id] = structuredClone({ units, score, territoryCount, resources, tech, nukes, alliances, oathbreaker })
+    }
+    return { territories, factions }
   }
 
   /** What the narrator is told about a turn: public events and statements only, never private reasoning or notes. */

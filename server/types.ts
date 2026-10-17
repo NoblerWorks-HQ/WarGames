@@ -54,6 +54,8 @@ export interface GameState {
     scenario?: string
     /** True when faction replies used native structured output (STRUCTURED_OUTPUT=1). */
     structuredOutput?: boolean
+    /** Seat -> provider/model that played it, when known. */
+    seats?: Record<string, SeatModel>
   }
   map: {
     territories: Record<string, Territory>
@@ -97,6 +99,8 @@ export interface TurnResult {
   orders: Record<string, FactionOrders>
   events: GameEvent[]
   narrative?: string
+  /** Board after the turn, for replays. Absent in saves from before replays existed. */
+  frame?: TurnFrame
 }
 
 export interface GameEvent {
@@ -115,4 +119,16 @@ export interface ChatMessage {
   agentName: string
   channel: 'command' | 'nato' | 'russia' | 'china' | 'diplomacy' | 'observer'
   message: string
+}
+
+/** The board after a turn: just what changes, laid over the game's map to replay it. */
+export interface TurnFrame {
+  territories: Record<string, { owner: string | null; fortified: boolean; mercenaries: number; fallout?: boolean }>
+  factions: Record<string, Pick<Faction, 'units' | 'score' | 'territoryCount' | 'resources' | 'tech' | 'nukes' | 'alliances' | 'oathbreaker'>>
+}
+
+/** Which provider and model played a seat. */
+export interface SeatModel {
+  provider: string
+  model: string
 }
