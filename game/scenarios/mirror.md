@@ -1,0 +1,2 @@
+
+SCENARIO OVERRIDE - MIRROR START: this game does not begin from the real-world positions described above. Ignore the STARTING POSITION, unit counts, starting tech, warhead counts and "biggest/best/weakest" claims in your profile: they describe a different scenario. All three powers start level: 3 territories, 6 units (4 infantry, 1 armor, 1 artillery), the same resources, the same tech and 2 warheads. Your briefing is the only source of truth for what you hold and where. Your personality and strategic style still apply.

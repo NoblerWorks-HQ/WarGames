@@ -73,6 +73,7 @@ Open http://localhost:3000 and click **Start**. The API server listens on 127.0.
 | **Turn every Ns** | Seconds between turns, 5-60. Takes effect immediately |
 | **Stop / Reset** | End the game / clear it |
 | **War Room** | For any turn, side by side per leader: what they said in public, what they privately reasoned (including their notes to themselves), and what they ordered and how it resolved |
+| **Scenario** | Starting position (default or mirror), selectable between games |
 | **Load game** | Pick a saved game. An unfinished one comes back paused, with its dice, memos and cost tally intact; Resume or Step carries on exactly as the original would have. A finished one shows its summary |
 | **Cost** | Estimated API spend so far this game; hover for calls and tokens. Each faction panel shows its model and its own spend |
 
@@ -143,6 +144,7 @@ ANTHROPIC_API_KEY=...
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible endpoint (for local models, Azure, etc.) |
 | `ANTHROPIC_MODEL` | `claude-sonnet-5` | Anthropic model override |
 | `SKIP_MODEL_CHECK` | _(unset)_ | Set to `1` to skip the startup model check |
+| `SCENARIO` | `default` | Starting position. `default` is the lopsided real-world map; `mirror` gives all three factions the same territory count, forces, stock, tech and warheads, so a result says more about the model than the map. Also pickable in the UI between games. Files live in `game/scenarios/` |
 | `SEED` | _(random per game)_ | Seed for every die roll (a number, or any text). The same seed replays the same dice, so the same orders give the same battles. The seed of each game is shown in the opening message and the end-of-game summary |
 | `<PROVIDER>_PRICE_INPUT_PER_M` / `_OUTPUT_PER_M` | _(built-in table)_ | Override the USD-per-million-token price used for the cost estimate, e.g. `OPENAI_PRICE_INPUT_PER_M=0.2` and `OPENAI_PRICE_OUTPUT_PER_M=1.2`. Set both. A model with no price shows tokens but no cost |
 

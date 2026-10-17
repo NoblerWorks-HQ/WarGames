@@ -4,7 +4,7 @@ import cors from 'cors'
 import { existsSync } from 'fs'
 import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
-import { GameEngine } from './engine.js'
+import { GameEngine, listScenarios } from './engine.js'
 import { clampInterval, isAllowedOrigin } from './http.js'
 import { parseSeed } from './rng.js'
 import { SaveStore } from './saves.js'
@@ -47,7 +47,13 @@ app.use(express.json())
 // SEED=<number or any text> makes every game roll the same dice, so a game can be replayed.
 const seed = parseSeed(process.env.SEED)
 if (seed !== undefined) console.log(`Dice seeded with ${seed} (SEED=${process.env.SEED})`)
-const engine = new GameEngine({ seed })
+// SCENARIO=mirror starts every faction level (see game/scenarios/); the default is the lopsided real-world map.
+const scenario = process.env.SCENARIO?.trim() || 'default'
+if (!listScenarios().includes(scenario)) {
+  console.error(`Unknown SCENARIO "${scenario}". Available: ${listScenarios().join(', ')}`)
+  process.exit(1)
+}
+const engine = new GameEngine({ seed, scenario })
 
 // Every finished turn is written to games/<id>.json, so a game can be reloaded, resumed or compared later.
 const saves = new SaveStore(process.env.GAMES_DIR ? resolve(process.env.GAMES_DIR) : resolve(dirname(fileURLToPath(import.meta.url)), '../games'))
@@ -61,6 +67,10 @@ app.get('/api/state', (_req, res) => {
 // Results so far for the current game: per-seat provider, score, valid-order rate, cost, latency
 app.get('/api/scorecard', (_req, res) => {
   res.json(buildScorecard(engine.state, engine.turnHistory, engine.usageSnapshot()))
+})
+
+app.get('/api/scenarios', (_req, res) => {
+  res.json({ scenarios: listScenarios(), current: engine.scenario })
 })
 
 // Saved games, newest first
@@ -103,6 +113,14 @@ app.get('/api/turns', (req, res) => {
 // Start game
 app.post('/api/start', (req, res) => {
   const intervalMs = clampInterval(req.body?.intervalMs)
+  const requested = req.body?.scenario
+  if (requested !== undefined) {
+    if (typeof requested !== 'string' || !listScenarios().includes(requested)) {
+      res.status(400).json({ error: `unknown scenario; available: ${listScenarios().join(', ')}` })
+      return
+    }
+    if (!engine.running) engine.scenario = requested
+  }
   console.log(`\n>>> /api/start called with intervalMs=${intervalMs}`)
   engine.start(intervalMs)
   console.log(`>>> Game started, running=${engine.running}`)
@@ -143,7 +161,15 @@ app.post('/api/stop', (_req, res) => {
 })
 
 // Reset game
-app.post('/api/reset', (_req, res) => {
+app.post('/api/reset', (req, res) => {
+  const requested = req.body?.scenario
+  if (requested !== undefined) {
+    if (typeof requested !== 'string' || !listScenarios().includes(requested)) {
+      res.status(400).json({ error: `unknown scenario; available: ${listScenarios().join(', ')}` })
+      return
+    }
+    engine.scenario = requested
+  }
   engine.stop()
   engine.reset()
   res.json({ status: 'reset' })

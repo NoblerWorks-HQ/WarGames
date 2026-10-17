@@ -57,6 +57,8 @@ export interface GameState {
     startedAt: string | null
     victor: string | null
     seed?: number
+    /** Starting position this game was set up from. */
+    scenario?: string
   }
   map: {
     territories: Record<string, Territory>

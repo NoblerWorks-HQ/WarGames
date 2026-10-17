@@ -21,6 +21,10 @@ Starting positions are deliberately asymmetric (they follow the real-world balan
 
 Everyone starts level on nuclear (tech 1, a couple of warheads), so nobody can retaliate until someone researches Second Strike.
 
+### Mirror scenario
+
+`SCENARIO=mirror` (`game/scenarios/mirror.json`) starts every faction level: 3 territories (NATO: western_na, eastern_na, alaska; Russia: western_russia, central_asia, ukraine; China: southeast_asia, india, pakistan), 6 units (4 infantry, 1 armor, 1 artillery), 18 gold / 14 food / 12 iron / 9 influence / 7 knowledge / 6 uranium, tech 2/1/1/1 and 2 warheads. Territory yield totals are within 2 of each other, but the map itself isn't symmetric (NATO's land has 2 coast territories, Russia's none, China's 1), so seat-for-model rotation is still the fair comparison. The personas get an override note retracting their default starting claims.
+
 The other 12 territories start neutral and are held by mercenaries (1-4 each).
 
 ## Map

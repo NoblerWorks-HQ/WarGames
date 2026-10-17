@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs'
+import { existsSync, readdirSync, readFileSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import type { GameState, Unit, Order, FactionOrders, TurnResult, GameEvent, ChatMessage } from './types.js'
@@ -33,6 +33,30 @@ export interface SavedGame {
 }
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+/** Scenario names are file names under game/scenarios/ ('default' is game/initial-world.json). */
+const SCENARIO_NAME = /^[a-z0-9][a-z0-9-]*$/
+
+export function listScenarios(): string[] {
+  const dir = resolve(__dirname, '../game/scenarios')
+  const extra = existsSync(dir) ? readdirSync(dir).filter(f => f.endsWith('.json')).map(f => f.slice(0, -5)).filter(n => SCENARIO_NAME.test(n)) : []
+  return ['default', ...extra.filter(n => n !== 'default').sort()]
+}
+
+/** Extra persona text a scenario adds, e.g. to retract starting-position claims that no longer hold. */
+function scenarioNote(name: string): string {
+  if (!SCENARIO_NAME.test(name) || name === 'default') return ''
+  const path = resolve(__dirname, `../game/scenarios/${name}.md`)
+  return existsSync(path) ? readFileSync(path, 'utf-8') : ''
+}
+
+function loadScenario(name: string): GameState {
+  if (!SCENARIO_NAME.test(name)) throw new Error(`Invalid scenario "${name}"`)
+  const file = name === 'default' ? '../game/initial-world.json' : `../game/scenarios/${name}.json`
+  const path = resolve(__dirname, file)
+  if (!existsSync(path)) throw new Error(`Unknown scenario "${name}" (have: ${listScenarios().join(', ')})`)
+  return JSON.parse(readFileSync(path, 'utf-8'))
+}
 
 const UNIT_STATS: Record<string, { attack: number; defense: number; movement: number; cost: { gold: number; iron: number } }> = {
   infantry: { attack: 2, defense: 2, movement: 1, cost: { gold: 2, iron: 1 } },
@@ -115,6 +139,8 @@ export class GameEngine {
   /** Source of every die roll; seeded so a game can be replayed. Tests may replace it. */
   rng: () => number
   seed: number
+  /** Starting position: 'default' or a file in game/scenarios/. Applies from the next reset. */
+  scenario: string
   /** Names the save file; set when a game begins. */
   gameId = ''
   /** Called after every finished turn (the server autosaves here). */
@@ -130,19 +156,20 @@ export class GameEngine {
   generation = 0
 
   /** With a `seed`, every game rolls the same dice stream; otherwise each game draws a fresh seed. */
-  constructor(opts: { seed?: number } = {}) {
+  constructor(opts: { seed?: number; scenario?: string } = {}) {
+    this.scenario = opts.scenario ?? 'default'
     this.fixedSeed = opts.seed
     this.seed = opts.seed ?? randomSeed()
     this.rng = mulberry32(this.seed)
-    const raw = readFileSync(resolve(__dirname, '../game/initial-world.json'), 'utf-8')
-    this.state = JSON.parse(raw)
+    this.state = loadScenario(this.scenario)
     this.state.game.seed = this.seed
+    this.state.game.scenario = this.scenario
   }
 
   reset() {
     this.generation++
-    const raw = readFileSync(resolve(__dirname, '../game/initial-world.json'), 'utf-8')
-    this.state = JSON.parse(raw)
+    this.state = loadScenario(this.scenario)
+    this.state.game.scenario = this.scenario
     this.turnHistory = []
     this.chatLog = []
     this.pendingAlliances = new Map()
@@ -312,6 +339,7 @@ export class GameEngine {
     this.usage = new UsageTracker()
     this.usage.restore(g.usage)
     this.seed = g.seed
+    this.scenario = g.state.game.scenario ?? 'default'
     const rng = mulberry32(g.seed)
     if (g.rngState !== null) rng.setState(g.rngState)
     this.rng = rng
@@ -619,7 +647,7 @@ export class GameEngine {
     const orderPromises = Object.keys(this.state.factions).map(async (factionId) => {
       const briefing = this.buildBriefing(factionId)
       console.log(`[turn ${turn}] Calling getFactionOrders for ${factionId}...`)
-      const orders = await getFactionOrders(factionId, personas[factionId], briefing, u => {
+      const orders = await getFactionOrders(factionId, personas[factionId] + scenarioNote(this.scenario), briefing, u => {
         if (gen === this.generation) this.usage.record(factionId, u)
       })
       if (gen !== this.generation) return

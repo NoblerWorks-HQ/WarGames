@@ -57,6 +57,13 @@ class WarGamesApp {
     document.getElementById('btn-step')!.addEventListener('click', () => this.stepGame())
     document.getElementById('btn-stop')!.addEventListener('click', () => this.stopGame())
     document.getElementById('btn-reset')!.addEventListener('click', () => this.resetGame())
+    const scenarioSelect = document.getElementById('scenario-select') as HTMLSelectElement
+    scenarioSelect.addEventListener('change', async () => {
+      await this.post('/api/reset', { scenario: scenarioSelect.value })
+      this.clearLocal()
+      await this.fetchState()
+    })
+    void this.loadScenarios()
     const loadSelect = document.getElementById('load-select') as HTMLSelectElement
     loadSelect.addEventListener('mousedown', () => void this.refreshSaves())
     loadSelect.addEventListener('focus', () => void this.refreshSaves())
@@ -162,6 +169,18 @@ class WarGamesApp {
     await this.fetchState()
   }
 
+  /** Scenario names come from the server; the picker only works between games. */
+  private async loadScenarios() {
+    try {
+      const { scenarios, current }: { scenarios: string[]; current: string } = await (await fetch('/api/scenarios')).json()
+      const select = document.getElementById('scenario-select') as HTMLSelectElement
+      select.replaceChildren(...scenarios.map(n => new Option(`Scenario: ${n}`, n)))
+      select.value = current
+    } catch (err) {
+      console.error('Failed to list scenarios:', err)
+    }
+  }
+
   /** Fill the Load dropdown from the server's saved games (text nodes only: ids come from disk). */
   private async refreshSaves() {
     const select = document.getElementById('load-select') as HTMLSelectElement
@@ -187,6 +206,7 @@ class WarGamesApp {
     if (!res.ok) console.error('Load failed:', await res.text())
     await this.fetchState()
     await this.fetchChat()
+    void this.loadScenarios()
   }
 
   private async resetGame() {
@@ -221,6 +241,7 @@ class WarGamesApp {
     this.toggle('btn-pause', running && !paused)
     this.toggle('btn-resume', running && paused)
     this.toggle('btn-stop', running)
+    ;(document.getElementById('scenario-select') as HTMLSelectElement).disabled = running
     ;(document.getElementById('btn-step') as HTMLButtonElement).disabled = turnExecuting
     if (!this.speedSynced) {
       this.speedSynced = true

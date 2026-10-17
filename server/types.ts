@@ -50,6 +50,8 @@ export interface GameState {
     victor: string | null
     /** Seed of the dice for this game; the same seed replays the same rolls. */
     seed?: number
+    /** Starting position this game was set up from. */
+    scenario?: string
   }
   map: {
     territories: Record<string, Territory>
