@@ -3,85 +3,39 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>War Games</title>
-<meta name="description" content="AI-powered geopolitical strategy simulation. NATO, Russia and China, each commanded by an LLM, fight for global dominance on an interactive map.">
+<title>War Games: AI Geopolitical Strategy Simulation Game</title>
+<meta name="description" content="Free open-source AI strategy game. NATO, Russia and China, each commanded by Claude, Gemini or ChatGPT, fight for global dominance on a live map.">
 <link rel="canonical" href="https://noblerworks-hq.github.io/WarGames/">
-<meta property="og:title" content="War Games">
-<meta property="og:description" content="NATO, Russia and China, each commanded by an LLM, compete for global dominance on a live map.">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="keywords" content="AI strategy game, geopolitical simulation, LLM wargame, Claude vs Gemini vs GPT, NATO Russia China simulation, nuclear exchange game, multi-agent simulation">
+<meta name="author" content="Nobler Works">
+<meta property="og:title" content="War Games: AI Geopolitical Strategy Simulation Game">
+<meta property="og:description" content="Free open-source AI strategy game. NATO, Russia and China, each commanded by Claude, Gemini or ChatGPT, fight for global dominance on a live map.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://noblerworks-hq.github.io/WarGames/">
+<meta property="og:site_name" content="War Games">
+<meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://noblerworks-hq.github.io/WarGames/img/social.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="War Games: Free open-source AI strategy game">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Nobler_Works">
+<meta name="twitter:title" content="War Games: AI Geopolitical Strategy Simulation Game">
+<meta name="twitter:description" content="Free open-source AI strategy game. NATO, Russia and China, each commanded by Claude, Gemini or ChatGPT, fight for global dominance on a live map.">
+<meta name="twitter:image" content="https://noblerworks-hq.github.io/WarGames/img/social.png">
 <meta name="theme-color" content="#000000">
 <meta name="color-scheme" content="dark light">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<meta property="og:site_name" content="War Games">
-<meta property="og:image:width" content="1280">
-<meta property="og:image:height" content="640">
-<meta name="twitter:title" content="War Games">
-<meta name="twitter:description" content="AI-powered geopolitical strategy simulation. NATO, Russia and China, each commanded by an LLM, fight for global dominance on an interactive map.">
-<meta name="twitter:image" content="https://noblerworks-hq.github.io/WarGames/img/social.png">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "War Games", "description": "AI-powered geopolitical strategy simulation. NATO, Russia and China, each commanded by an LLM, fight for global dominance on an interactive map.", "url": "https://noblerworks-hq.github.io/WarGames/", "image": "https://noblerworks-hq.github.io/WarGames/img/social.png", "codeRepository": "https://github.com/NoblerWorks-HQ/WarGames", "license": "https://opensource.org/licenses/MIT", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "author": {"@type": "Organization", "name": "Nobler Works", "url": "https://noblerworks.com/"}, "applicationCategory": "GameApplication", "operatingSystem": "Any (Node.js 20+)"}</script>
-<style>
-:root{--bg:#000;--panel:#0d0d0d;--line:#222;--text:#f2f2f2;--muted:#9a9a9a;--nato:#3498db;--russia:#e74c3c;--china:#f1c40f;--accent:#e74c3c}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-a{color:inherit}
-.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
-header.top{border-bottom:1px solid var(--line)}
-header.top .wrap{display:flex;justify-content:space-between;align-items:center;height:56px}
-.brand{font:700 15px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.14em;text-decoration:none;text-transform:uppercase}
-nav a{margin-left:20px;color:var(--muted);text-decoration:none;font-size:14px}
-nav a:hover{color:var(--text)}
-.hero{padding:72px 0 40px;text-align:center}
-.hero h1{font:800 clamp(40px,8vw,76px)/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em;text-transform:uppercase;margin:0 0 20px}
-.hero p.lead{max-width:640px;margin:0 auto 28px;color:var(--muted);font-size:18px}
-.btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.btn{display:inline-block;padding:11px 20px;border:1px solid var(--line);border-radius:6px;text-decoration:none;font-weight:600;font-size:15px}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn:hover{border-color:var(--text)}
-.shot{margin:40px auto 0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.shot img{display:block;width:100%;height:auto}
-section{padding:56px 0;border-top:1px solid var(--line)}
-h2{font:700 13px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin:0 0 24px}
-.factions{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
-.card{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--c,var(--line));border-radius:6px;padding:18px}
-.card h3{margin:0 0 4px;color:var(--c)}
-.card .who{color:var(--muted);font-size:14px;margin-bottom:8px}
-.card p{margin:0}
-.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:12px}
-.steps li{counter-increment:s;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px 14px 56px;position:relative}
-.steps li::before{content:counter(s);position:absolute;left:16px;top:12px;font:700 20px/1.5 ui-monospace,Menlo,monospace;color:var(--accent)}
-.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
-.gallery img{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px}
-.gallery figcaption{color:var(--muted);font-size:14px;margin-top:6px}
-.gallery figure{margin:0}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;color:var(--muted)}
-pre{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;overflow-x:auto;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;margin:0 0 16px}
-p.note{color:var(--muted)}
-footer{border-top:1px solid var(--line);padding:32px 0;color:var(--muted);font-size:14px;text-align:center}
-footer a{color:var(--text)}
-@media (max-width:560px){nav a{margin-left:12px}.hero{padding-top:48px}}
-@media (prefers-color-scheme:light){:root{--bg:#fff;--panel:#f6f6f6;--line:#dcdcdc;--text:#111;--muted:#555;--nato:#1f6fb0;--russia:#c0392b;--china:#9a7b00;--accent:#c0392b}}
-.skip{position:absolute;left:-9999px;top:8px;background:var(--accent);color:#fff;padding:8px 14px;border-radius:6px;z-index:10}
-.skip:focus{left:8px}
-a:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-section[id]{scroll-margin-top:16px}
-.social{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
-.social a{text-decoration:none}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-@media print{header.top,.btns,.skip{display:none}body{background:#fff;color:#000}}
-</style>
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "Organization", "@id": "https://noblerworks.com/#org", "name": "Nobler Works", "url": "https://noblerworks.com/", "sameAs": ["https://x.com/Nobler_Works", "https://www.youtube.com/@NoblerWorks", "https://www.tiktok.com/@noblerworks", "https://www.threads.com/@noblerworks", "https://github.com/NoblerWorks-HQ"], "founder": [{"@type": "Person", "name": "Patrick Wilson"}, {"@type": "Person", "name": "Daniel Casale"}]}, {"@type": "WebSite", "@id": "https://noblerworks-hq.github.io/WarGames/#site", "url": "https://noblerworks-hq.github.io/WarGames/", "name": "War Games", "publisher": {"@id": "https://noblerworks.com/#org"}, "inLanguage": "en"}, {"@type": "WebPage", "@id": "https://noblerworks-hq.github.io/WarGames/#page", "url": "https://noblerworks-hq.github.io/WarGames/", "name": "War Games: AI Geopolitical Strategy Simulation Game", "description": "Free open-source AI strategy game. NATO, Russia and China, each commanded by Claude, Gemini or ChatGPT, fight for global dominance on a live map.", "isPartOf": {"@id": "https://noblerworks-hq.github.io/WarGames/#site"}, "inLanguage": "en", "datePublished": "2026-10-17", "dateModified": "2026-10-18", "author": {"@id": "https://noblerworks.com/#org"}}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "War Games", "item": "https://noblerworks-hq.github.io/WarGames/"}]}, {"@type": "SoftwareApplication", "applicationCategory": "GameApplication", "operatingSystem": "Any (Node.js 20+)", "name": "War Games", "description": "Free open-source AI strategy game. NATO, Russia and China, each commanded by Claude, Gemini or ChatGPT, fight for global dominance on a live map.", "url": "https://noblerworks-hq.github.io/WarGames/", "image": "https://noblerworks-hq.github.io/WarGames/img/social.png", "codeRepository": "https://github.com/NoblerWorks-HQ/WarGames", "license": "https://opensource.org/licenses/MIT", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "author": {"@id": "https://noblerworks.com/#org"}, "keywords": "AI strategy game, geopolitical simulation, LLM wargame, Claude vs Gemini vs GPT, NATO Russia China simulation, nuclear exchange game, multi-agent simulation"}, {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "What is War Games?", "acceptedAnswer": {"@type": "Answer", "text": "War Games is a free, open-source geopolitical strategy simulation. NATO, Russia and China compete for territory, resources and dominance on an interactive map, and each faction is commanded by a large language model that issues orders every turn."}}, {"@type": "Question", "name": "Which AI models can play?", "acceptedAnswer": {"@type": "Answer", "text": "Google Gemini, OpenAI and Anthropic Claude. You can mix them per faction, for example Claude commanding NATO, Gemini running Russia and ChatGPT leading China. Any OpenAI-compatible endpoint also works, including local models through Ollama, LM Studio or vLLM."}}, {"@type": "Question", "name": "How much does a game cost to run?", "acceptedAnswer": {"@type": "Answer", "text": "A game ends after 20 turns, and each turn makes four provider calls (three factions plus the narrator), so one game is at most 80 calls. It defaults to cheap, fast models. Every game spends your own API key."}}, {"@type": "Question", "name": "Can I play it in the browser without installing anything?", "acceptedAnswer": {"@type": "Answer", "text": "No. War Games needs a small server process and your own provider API key, so you run it locally with Node.js. The setup is four commands."}}, {"@type": "Question", "name": "How do nuclear weapons work in the game?", "acceptedAnswer": {"@type": "Answer", "text": "Nuclear is a research track with three levels. A strike destroys every unit in the target territory and leaves it neutral with no yield, and a faction at nuclear level 3 with a warhead in stock automatically fires back."}}, {"@type": "Question", "name": "Is War Games free and open source?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. It is MIT licensed and built with TypeScript, Vite, Leaflet and Express by Nobler Works."}}]}]}</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-  <a class="brand" href="#">War Games</a>
-  <nav><a href="#how">How it works</a><a href="#screens">Screens</a><a href="#run">Run it</a><a href="https://github.com/NoblerWorks-HQ/WarGames">GitHub</a></nav>
+  <a class="brand" href="./">War Games</a>
+  <nav><a href="#faq">FAQ</a><a href="how-it-works/">How it works</a><a href="nuclear-exchange/">Nuclear rules</a><a href="https://github.com/NoblerWorks-HQ/WarGames">GitHub</a></nav>
 </div></header>
-
 <main id="main">
 <div class="wrap">
   <div class="hero">
@@ -91,7 +45,7 @@ section[id]{scroll-margin-top:16px}
       <a class="btn primary" href="https://github.com/NoblerWorks-HQ/WarGames">View on GitHub</a>
       <a class="btn" href="#run">Run it locally</a>
     </div>
-    <div class="shot"><img src="img/wargames-nuclear-launch-detected.png" alt="War Games map showing a nuclear launch detected alert" width="1853" height="953"></div>
+    <div class="shot"><img fetchpriority="high" decoding="async" fetchpriority="high" decoding="async" fetchpriority="high" decoding="async" fetchpriority="high" decoding="async" src="img/wargames-nuclear-launch-detected.jpg" alt="War Games map showing a nuclear launch detected alert" width="1853" height="953"></div>
   </div>
 </div>
 
@@ -124,8 +78,8 @@ section[id]{scroll-margin-top:16px}
 <section id="screens"><div class="wrap">
   <h2>Screens</h2>
   <div class="gallery">
-    <figure><img src="img/wargames-nuke-explosion.png" alt="A nuclear explosion on the War Games map" loading="lazy"><figcaption>A nuclear exchange</figcaption></figure>
-    <figure><img src="img/wargames-endgame.png" alt="War Games victory screen" loading="lazy"><figcaption>End game and victory screen</figcaption></figure>
+    <figure><img src="img/wargames-nuke-explosion.jpg" alt="A nuclear explosion on the War Games map" loading="lazy"><figcaption>A nuclear exchange</figcaption></figure>
+    <figure><img src="img/wargames-endgame.jpg" alt="War Games victory screen" loading="lazy"><figcaption>End game and victory screen</figcaption></figure>
   </div>
 </div></section>
 
@@ -139,8 +93,21 @@ cp .env.example .env   # add your API key
 npm run dev</pre>
   <p class="note">Then open http://localhost:3000 and click Start Game. Built with TypeScript, Vite, Leaflet and Express. MIT licensed.</p>
 </div></section>
-</main>
-
-<footer><div class="wrap"><div class="social"><a href="https://noblerworks.com/">Website</a><a href="https://x.com/Nobler_Works">X</a><a href="https://www.youtube.com/@NoblerWorks">YouTube</a><a href="https://www.tiktok.com/@noblerworks">TikTok</a><a href="https://www.threads.com/@noblerworks">Threads</a></div>Built by <a href="https://noblerworks.com/">Nobler Works</a> · <a href="https://github.com/NoblerWorks-HQ/WarGames">Source on GitHub</a></div></footer>
-</body>
-</html>
+<section><div class="wrap"><h2>Explore</h2><div class="grid cards"><a class="card" href="how-it-works/"><h3>How War Games works</h3><p>How the War Games engine runs a turn: faction briefings, nine order types, combat, an AI news narrator, and cost controls that cap a game at 80 calls.</p></a><a class="card" href="nuclear-exchange/"><h3>Nuclear exchange rules</h3><p>How nuclear weapons resolve in War Games: the three-level nuclear research track, warhead costs, ICBM range, territory destruction and automatic second strike.</p></a><a class="card" href="ai-providers/"><h3>Claude vs Gemini vs ChatGPT in War Games</h3><p>Run Claude, Gemini and GPT against each other as rival superpowers. How to pick a provider per faction, use local models, and keep costs low in War Games.</p></a><a class="card" href="modding/"><h3>Modding War Games</h3><p>Change how War Games plays: edit the rules, the four-track tech tree, the starting world and each faction persona, and learn which numbers the engine enforces.</p></a></div></div></section>
+<section id="faq"><div class="wrap"><h2>Frequently asked questions</h2><div class="faq"><details><summary>What is War Games?</summary><p>War Games is a free, open-source geopolitical strategy simulation. NATO, Russia and China compete for territory, resources and dominance on an interactive map, and each faction is commanded by a large language model that issues orders every turn.</p></details><details><summary>Which AI models can play?</summary><p>Google Gemini, OpenAI and Anthropic Claude. You can mix them per faction, for example Claude commanding NATO, Gemini running Russia and ChatGPT leading China. Any OpenAI-compatible endpoint also works, including local models through Ollama, LM Studio or vLLM.</p></details><details><summary>How much does a game cost to run?</summary><p>A game ends after 20 turns, and each turn makes four provider calls (three factions plus the narrator), so one game is at most 80 calls. It defaults to cheap, fast models. Every game spends your own API key.</p></details><details><summary>Can I play it in the browser without installing anything?</summary><p>No. War Games needs a small server process and your own provider API key, so you run it locally with Node.js. The setup is four commands.</p></details><details><summary>How do nuclear weapons work in the game?</summary><p>Nuclear is a research track with three levels. A strike destroys every unit in the target territory and leaves it neutral with no yield, and a faction at nuclear level 3 with a warhead in stock automatically fires back.</p></details><details><summary>Is War Games free and open source?</summary><p>Yes. It is MIT licensed and built with TypeScript, Vite, Leaflet and Express by Nobler Works.</p></details></div></div></section>
+<section id="nobler-works"><div class="wrap">
+  <h2>Built by Nobler Works</h2>
+  <div class="nw"><img src="img/nobler-works-banner.jpg" alt="Nobler Works" width="480" height="204" loading="lazy">
+  <div><p>Nobler Works builds AI agents, multi-agent simulations and custom software. If you want an AI-driven simulation or decision tool built for your domain, get in touch.</p>
+  <p><a class="btn primary" href="https://noblerworks.com/">Work with Nobler Works</a></p>
+  <p class="note">AI agents and multi-agent systems, OSINT and real-time dashboards, cybersecurity software, multi-cloud architecture on AWS, Google Cloud and Azure, and custom software.</p></div></div>
+  <h2 style="margin-top:40px">More from Nobler Works</h2>
+  <div class="grid cards"><a class="card" href="https://noblerworks-hq.github.io/IRONSIGHT/"><h3>IRONSIGHT</h3><p>Real-time OSINT command center for the Iran/Israel and Russia/Ukraine theaters.</p></a><a class="card" href="https://github.com/NoblerWorks-HQ/minecraft-agentic"><h3>Minecraft Agentic Builder</h3><p>A crew of four AI bots builds Minecraft worlds from one line of text, live in your browser.</p></a><a class="card" href="https://gitgood.dev"><h3>gitGood.dev</h3><p>Practice questions, coding challenges, system design and cloud certification practice exams.</p></a><a class="card" href="https://patrickwiloak.github.io/cloud-data-ai-security-zero-to-hero/"><h3>Cloud, Data, AI and Security: Zero to Hero</h3><p>Free study guides for 149 certifications across 27 providers, plus hands-on builds.</p></a></div>
+  <h2 style="margin-top:40px">Follow along</h2>
+  <div class="social"><a href="https://noblerworks.com/" rel="noopener">Website</a><a href="https://x.com/Nobler_Works" rel="noopener">X</a><a href="https://www.youtube.com/@NoblerWorks" rel="noopener">YouTube</a><a href="https://www.tiktok.com/@noblerworks" rel="noopener">TikTok</a><a href="https://www.threads.com/@noblerworks" rel="noopener">Threads</a><a href="https://github.com/NoblerWorks-HQ" rel="noopener">GitHub</a></div>
+</div></section>
+</main><footer><div class="wrap">
+<div class="more"><a href="how-it-works/">How War Games works</a><a href="nuclear-exchange/">Nuclear exchange rules</a><a href="ai-providers/">Claude vs Gemini vs ChatGPT in War Games</a><a href="modding/">Modding War Games</a><a href="https://github.com/NoblerWorks-HQ/WarGames">Source on GitHub</a><a href="https://noblerworks.com/">noblerworks.com</a></div>
+<p>War Games is open source (MIT), built by <a href="https://noblerworks.com/">Nobler Works</a>.</p>
+</div></footer>
+</body></html>

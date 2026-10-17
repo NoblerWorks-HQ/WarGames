@@ -1,7 +1,20 @@
 # War Games
 
-> AI-powered geopolitical strategy simulation. NATO, Russia and China, each commanded by an LLM, fight for global dominance on an interactive map.
+> Free open-source AI strategy game. NATO, Russia and China, each commanded by Claude, Gemini or ChatGPT, fight for global dominance on a live map.
+
+## Pages
+
+- [Home](https://noblerworks-hq.github.io/WarGames/): overview, FAQ
+- [How War Games works](https://noblerworks-hq.github.io/WarGames/how-it-works/): How the War Games engine runs a turn: faction briefings, nine order types, combat, an AI news narrator, and cost controls that cap a game at 80 calls.
+- [Nuclear exchange rules](https://noblerworks-hq.github.io/WarGames/nuclear-exchange/): How nuclear weapons resolve in War Games: the three-level nuclear research track, warhead costs, ICBM range, territory destruction and automatic second strike.
+- [Claude vs Gemini vs ChatGPT in War Games](https://noblerworks-hq.github.io/WarGames/ai-providers/): Run Claude, Gemini and GPT against each other as rival superpowers. How to pick a provider per faction, use local models, and keep costs low in War Games.
+- [Modding War Games](https://noblerworks-hq.github.io/WarGames/modding/): Change how War Games plays: edit the rules, the four-track tech tree, the starting world and each faction persona, and learn which numbers the engine enforces.
+
+## Links
 
 - [Source code and README](https://github.com/NoblerWorks-HQ/WarGames)
-- [Landing page](https://noblerworks-hq.github.io/WarGames/)
 - [Nobler Works](https://noblerworks.com/)
+- [X](https://x.com/Nobler_Works)
+- [YouTube](https://www.youtube.com/@NoblerWorks)
+- [TikTok](https://www.tiktok.com/@noblerworks)
+- [Threads](https://www.threads.com/@noblerworks)

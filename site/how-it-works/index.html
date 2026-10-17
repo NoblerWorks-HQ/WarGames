@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How War Games Works: Turn Engine, Orders and AI Narrator</title>
+<meta name="description" content="How the War Games engine runs a turn: faction briefings, nine order types, combat, an AI news narrator, and cost controls that cap a game at 80 calls.">
+<link rel="canonical" href="https://noblerworks-hq.github.io/WarGames/how-it-works/">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Nobler Works">
+<meta property="og:title" content="How War Games Works: Turn Engine, Orders and AI Narrator">
+<meta property="og:description" content="How the War Games engine runs a turn: faction briefings, nine order types, combat, an AI news narrator, and cost controls that cap a game at 80 calls.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://noblerworks-hq.github.io/WarGames/how-it-works/">
+<meta property="og:site_name" content="War Games">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://noblerworks-hq.github.io/WarGames/img/social.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="War Games: Free open-source AI strategy game">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Nobler_Works">
+<meta name="twitter:title" content="How War Games Works: Turn Engine, Orders and AI Narrator">
+<meta name="twitter:description" content="How the War Games engine runs a turn: faction briefings, nine order types, combat, an AI news narrator, and cost controls that cap a game at 80 calls.">
+<meta name="twitter:image" content="https://noblerworks-hq.github.io/WarGames/img/social.png">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../style.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "Organization", "@id": "https://noblerworks.com/#org", "name": "Nobler Works", "url": "https://noblerworks.com/", "sameAs": ["https://x.com/Nobler_Works", "https://www.youtube.com/@NoblerWorks", "https://www.tiktok.com/@noblerworks", "https://www.threads.com/@noblerworks", "https://github.com/NoblerWorks-HQ"], "founder": [{"@type": "Person", "name": "Patrick Wilson"}, {"@type": "Person", "name": "Daniel Casale"}]}, {"@type": "WebSite", "@id": "https://noblerworks-hq.github.io/WarGames/#site", "url": "https://noblerworks-hq.github.io/WarGames/", "name": "War Games", "publisher": {"@id": "https://noblerworks.com/#org"}, "inLanguage": "en"}, {"@type": "TechArticle", "@id": "https://noblerworks-hq.github.io/WarGames/how-it-works/#page", "url": "https://noblerworks-hq.github.io/WarGames/how-it-works/", "name": "How War Games Works: Turn Engine, Orders and AI Narrator", "description": "How the War Games engine runs a turn: faction briefings, nine order types, combat, an AI news narrator, and cost controls that cap a game at 80 calls.", "isPartOf": {"@id": "https://noblerworks-hq.github.io/WarGames/#site"}, "inLanguage": "en", "datePublished": "2026-10-17", "dateModified": "2026-10-18", "author": {"@id": "https://noblerworks.com/#org"}}, {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "War Games", "item": "https://noblerworks-hq.github.io/WarGames/"}, {"@type": "ListItem", "position": 2, "name": "How War Games works", "item": "https://noblerworks-hq.github.io/WarGames/how-it-works/"}]}]}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+  <a class="brand" href="../">War Games</a>
+  <nav><a href="../#faq">FAQ</a><a href="../how-it-works/">How it works</a><a href="../nuclear-exchange/">Nuclear rules</a><a href="https://github.com/NoblerWorks-HQ/WarGames">GitHub</a></nav>
+</div></header>
+<main id="main"><div class="wrap prose">
+<div class="crumbs"><a href="../">War Games</a> / How War Games works</div>
+<h1>How War Games works</h1>
+<p>War Games is a turn-based simulation. Every 10 to 15 seconds the engine runs one turn, and the three factions (NATO, Russia and China) are each controlled by a large language model.</p>
+<h2>The turn loop</h2>
+<ol><li><strong>Briefing.</strong> The engine builds a briefing for each faction: its visible territories, resources, units and the actions that are valid right now.</li>
+<li><strong>Orders.</strong> All three factions receive their briefing in parallel and answer with strategic orders in compact JSON. There is no prose in the game data.</li>
+<li><strong>Resolution.</strong> Orders resolve in faction order (NATO, Russia, China): movement, combat, territory changes and resource gains.</li>
+<li><strong>Narration.</strong> A narrator AI writes a dramatic, news-style recap of the turn.</li>
+<li><strong>Update.</strong> Turn history is stored and the map updates for every connected client.</li></ol>
+<h2>What a faction can do</h2>
+<p>Each faction can move, attack, fortify, recruit, trade, spy, research, negotiate diplomacy, or launch a nuke. See <a href="../nuclear-exchange/">the nuclear exchange rules</a> for how the last one resolves.</p>
+<h2>Factions</h2>
+<div class="tablewrap"><table><tr><th>Faction</th><th>Leader</th><th>Strategy</th></tr><tr><td>NATO</td><td>President Trump</td><td>Tech advantage, coalition warfare, aggressive dealmaking</td></tr><tr><td>Russia</td><td>President Putin</td><td>Defensive depth, nuclear deterrence, cold calculation</td></tr><tr><td>China</td><td>President Xi Jinping</td><td>Economic leverage, patience, long-term strategy</td></tr></table></div>
+<h2>Cost controls</h2>
+<ul><li>Defaults to cheap, fast models.</li><li>15-second timeouts prevent runaway calls.</li><li>Rate limits, provider errors and dropped connections are retried up to twice with exponential backoff instead of forfeiting the turn.</li><li>A game ends after 20 turns, so it makes at most 80 provider calls: three factions plus the narrator, every turn.</li></ul>
+<h2>Architecture</h2>
+<p>A Vite and TypeScript frontend draws a Leaflet map with territory overlays and combat effects. An Express server holds the game engine and a thin provider abstraction that calls Gemini, OpenAI or Anthropic directly, with no agent framework. Game state lives in memory only, so restarting the server drops the game in progress.</p>
+</div>
+<section id="nobler-works"><div class="wrap">
+  <h2>Built by Nobler Works</h2>
+  <div class="nw"><img src="../img/nobler-works-banner.jpg" alt="Nobler Works" width="480" height="204" loading="lazy">
+  <div><p>Nobler Works builds AI agents, multi-agent simulations and custom software. If you want an AI-driven simulation or decision tool built for your domain, get in touch.</p>
+  <p><a class="btn primary" href="https://noblerworks.com/">Work with Nobler Works</a></p>
+  <p class="note">AI agents and multi-agent systems, OSINT and real-time dashboards, cybersecurity software, multi-cloud architecture on AWS, Google Cloud and Azure, and custom software.</p></div></div>
+  <h2 style="margin-top:40px">More from Nobler Works</h2>
+  <div class="grid cards"><a class="card" href="https://noblerworks-hq.github.io/IRONSIGHT/"><h3>IRONSIGHT</h3><p>Real-time OSINT command center for the Iran/Israel and Russia/Ukraine theaters.</p></a><a class="card" href="https://github.com/NoblerWorks-HQ/minecraft-agentic"><h3>Minecraft Agentic Builder</h3><p>A crew of four AI bots builds Minecraft worlds from one line of text, live in your browser.</p></a><a class="card" href="https://gitgood.dev"><h3>gitGood.dev</h3><p>Practice questions, coding challenges, system design and cloud certification practice exams.</p></a><a class="card" href="https://patrickwiloak.github.io/cloud-data-ai-security-zero-to-hero/"><h3>Cloud, Data, AI and Security: Zero to Hero</h3><p>Free study guides for 149 certifications across 27 providers, plus hands-on builds.</p></a></div>
+  <h2 style="margin-top:40px">Follow along</h2>
+  <div class="social"><a href="https://noblerworks.com/" rel="noopener">Website</a><a href="https://x.com/Nobler_Works" rel="noopener">X</a><a href="https://www.youtube.com/@NoblerWorks" rel="noopener">YouTube</a><a href="https://www.tiktok.com/@noblerworks" rel="noopener">TikTok</a><a href="https://www.threads.com/@noblerworks" rel="noopener">Threads</a><a href="https://github.com/NoblerWorks-HQ" rel="noopener">GitHub</a></div>
+</div></section>
+</main>
+<footer><div class="wrap">
+<div class="more"><a href="../how-it-works/">How War Games works</a><a href="../nuclear-exchange/">Nuclear exchange rules</a><a href="../ai-providers/">Claude vs Gemini vs ChatGPT in War Games</a><a href="../modding/">Modding War Games</a><a href="https://github.com/NoblerWorks-HQ/WarGames">Source on GitHub</a><a href="https://noblerworks.com/">noblerworks.com</a></div>
+<p>War Games is open source (MIT), built by <a href="https://noblerworks.com/">Nobler Works</a>.</p>
+</div></footer>
+</body></html>
