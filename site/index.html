@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>War Games</title>
+<meta name="description" content="AI-powered geopolitical strategy simulation. NATO, Russia and China, each commanded by an LLM, fight for global dominance on an interactive map.">
+<link rel="canonical" href="https://noblerworks-hq.github.io/WarGames/">
+<meta property="og:title" content="War Games">
+<meta property="og:description" content="NATO, Russia and China, each commanded by an LLM, compete for global dominance on a live map.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://noblerworks-hq.github.io/WarGames/">
+<meta property="og:image" content="https://noblerworks-hq.github.io/WarGames/img/wargames-nuclear-launch-detected.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+:root{--bg:#000;--panel:#0d0d0d;--line:#222;--text:#f2f2f2;--muted:#9a9a9a;--nato:#3498db;--russia:#e74c3c;--china:#f1c40f;--accent:#e74c3c}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:inherit}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+header.top{border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;justify-content:space-between;align-items:center;height:56px}
+.brand{font:700 15px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.14em;text-decoration:none;text-transform:uppercase}
+nav a{margin-left:20px;color:var(--muted);text-decoration:none;font-size:14px}
+nav a:hover{color:var(--text)}
+.hero{padding:72px 0 40px;text-align:center}
+.hero h1{font:800 clamp(40px,8vw,76px)/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em;text-transform:uppercase;margin:0 0 20px}
+.hero p.lead{max-width:640px;margin:0 auto 28px;color:var(--muted);font-size:18px}
+.btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-block;padding:11px 20px;border:1px solid var(--line);border-radius:6px;text-decoration:none;font-weight:600;font-size:15px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:hover{border-color:var(--text)}
+.shot{margin:40px auto 0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.shot img{display:block;width:100%;height:auto}
+section{padding:56px 0;border-top:1px solid var(--line)}
+h2{font:700 13px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin:0 0 24px}
+.factions{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--c,var(--line));border-radius:6px;padding:18px}
+.card h3{margin:0 0 4px;color:var(--c)}
+.card .who{color:var(--muted);font-size:14px;margin-bottom:8px}
+.card p{margin:0}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.steps li{counter-increment:s;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px 14px 56px;position:relative}
+.steps li::before{content:counter(s);position:absolute;left:16px;top:12px;font:700 20px/1.5 ui-monospace,Menlo,monospace;color:var(--accent)}
+.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.gallery img{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px}
+.gallery figcaption{color:var(--muted);font-size:14px;margin-top:6px}
+.gallery figure{margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;color:var(--muted)}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;overflow-x:auto;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;margin:0 0 16px}
+p.note{color:var(--muted)}
+footer{border-top:1px solid var(--line);padding:32px 0;color:var(--muted);font-size:14px;text-align:center}
+footer a{color:var(--text)}
+@media (max-width:560px){nav a{margin-left:12px}.hero{padding-top:48px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="#">War Games</a>
+  <nav><a href="#how">How it works</a><a href="#screens">Screens</a><a href="#run">Run it</a><a href="https://github.com/NoblerWorks-HQ/WarGames">GitHub</a></nav>
+</div></header>
+
+<main>
+<div class="wrap">
+  <div class="hero">
+    <h1>War Games</h1>
+    <p class="lead">An AI-powered geopolitical strategy simulation. NATO, Russia and China compete for territory, resources and global dominance on an interactive map, and each faction is commanded by an LLM.</p>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/NoblerWorks-HQ/WarGames">View on GitHub</a>
+      <a class="btn" href="#run">Run it locally</a>
+    </div>
+    <div class="shot"><img src="img/wargames-nuclear-launch-detected.png" alt="War Games map showing a nuclear launch detected alert" width="1853" height="953"></div>
+  </div>
+</div>
+
+<section id="how"><div class="wrap">
+  <h2>How it works</h2>
+  <ol class="steps">
+    <li>The game engine builds a briefing for each faction: visible territories, resources, units and valid actions.</li>
+    <li>All three AI factions respond with orders: move, attack, fortify, recruit, trade, spy, research, diplomacy, or nuke.</li>
+    <li>Orders resolve: combat, territory changes, resource gains.</li>
+    <li>A narrator AI writes a dramatic news recap of the turn.</li>
+    <li>The map updates live. A new turn lands every 10 to 15 seconds.</li>
+  </ol>
+</div></section>
+
+<section><div class="wrap">
+  <h2>The factions</h2>
+  <div class="factions">
+    <div class="card" style="--c:var(--nato)"><h3>NATO</h3><div class="who">President Trump</div><p>Tech advantage, coalition warfare, aggressive dealmaking.</p></div>
+    <div class="card" style="--c:var(--russia)"><h3>Russia</h3><div class="who">President Putin</div><p>Defensive depth, nuclear deterrence, cold calculation.</p></div>
+    <div class="card" style="--c:var(--china)"><h3>China</h3><div class="who">President Xi Jinping</div><p>Economic leverage, patience, long-term strategy.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Bring your own model</h2>
+  <p>Pick Google Gemini, OpenAI or Anthropic Claude, or mix them per faction: Claude commanding NATO, Gemini running Russia, ChatGPT leading China. Any OpenAI-compatible endpoint works too, including local models through Ollama, LM Studio or vLLM.</p>
+  <div class="chips"><span class="chip">Claude</span><span class="chip">Gemini</span><span class="chip">OpenAI</span><span class="chip">Ollama / LM Studio / vLLM</span></div>
+</div></section>
+
+<section id="screens"><div class="wrap">
+  <h2>Screens</h2>
+  <div class="gallery">
+    <figure><img src="img/wargames-nuke-explosion.png" alt="A nuclear explosion on the War Games map" loading="lazy"><figcaption>A nuclear exchange</figcaption></figure>
+    <figure><img src="img/wargames-endgame.png" alt="War Games victory screen" loading="lazy"><figcaption>End game and victory screen</figcaption></figure>
+  </div>
+</div></section>
+
+<section id="run"><div class="wrap">
+  <h2>Run it yourself</h2>
+  <p>War Games needs a server process and your own provider API key, so it can't run on this page. Every game spends your key.</p>
+<pre>git clone https://github.com/NoblerWorks-HQ/WarGames.git
+cd WarGames
+npm install
+cp .env.example .env   # add your API key
+npm run dev</pre>
+  <p class="note">Then open http://localhost:3000 and click Start Game. Built with TypeScript, Vite, Leaflet and Express. MIT licensed.</p>
+</div></section>
+</main>
+
+<footer><div class="wrap">Built by <a href="https://noblerworks.com/">Nobler Works</a> · <a href="https://github.com/NoblerWorks-HQ/WarGames">Source on GitHub</a></div></footer>
+</body>
+</html>
