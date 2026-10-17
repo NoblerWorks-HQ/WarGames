@@ -5,19 +5,21 @@ import type { CallUsage } from './usage.js'
 let reply = ''
 let tokens: { inputTokens?: number; outputTokens?: number } = { inputTokens: 1000, outputTokens: 500 }
 let prompt = ''
+let lastOpts: { schema?: { required?: string[] } } | undefined
 
 vi.mock('./ai-provider.js', () => ({
   getProvider: () => ({
     name: 'gemini',
     model: 'gemini-3.5-flash-lite',
-    generateWithUsage: async (p: string) => {
+    generateWithUsage: async (p: string, opts?: typeof lastOpts) => {
       prompt = p
+      lastOpts = opts
       return { text: reply, ...tokens }
     },
   }),
 }))
 
-const { getFactionOrders, getNarrative, MAX_ORDERS, MAX_NOTES_CHARS } = await import('./ai.js')
+const { getFactionOrders, getNarrative, MAX_ORDERS, MAX_NOTES_CHARS, ORDERS_SCHEMA } = await import('./ai.js')
 
 beforeEach(() => {
   vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -84,5 +86,19 @@ describe('getNarrative', () => {
     expect(await getNarrative('Turn 1.', u => seen.push(u))).toBe('Breaking news.')
     expect(seen).toHaveLength(1)
     expect(prompt).toContain('previous bulletin')
+  })
+})
+
+describe('structured output request', () => {
+  it('passes the orders schema for factions and none for the narrator', async () => {
+    reply = JSON.stringify({ orders: [] })
+    await getFactionOrders('nato', 'p', '{}')
+    expect(lastOpts?.schema).toBe(ORDERS_SCHEMA)
+    expect(ORDERS_SCHEMA.required).toEqual(['orders', 'reasoning'])
+    expect(ORDERS_SCHEMA.properties.orders.maxItems).toBe(MAX_ORDERS)
+    expect(ORDERS_SCHEMA.properties.orders.items.properties.action.enum).toContain('build_nuke')
+    reply = 'bulletin'
+    await getNarrative('s')
+    expect(lastOpts).toBeUndefined()
   })
 })

@@ -23,6 +23,22 @@ export interface GenerateResult {
   outputTokens?: number
 }
 
+/** Ask for machine-readable output. Only honoured when STRUCTURED_OUTPUT=1; see structuredOutputEnabled(). */
+export interface GenerateOptions {
+  /** JSON Schema of the reply. Anthropic needs it (forced tool call); OpenAI and Gemini only switch on JSON mode. */
+  schema?: Record<string, unknown>
+}
+
+/**
+ * STRUCTURED_OUTPUT=1 uses each vendor's native structured-output feature for faction orders
+ * (OpenAI response_format json_object, Gemini application/json, Anthropic forced tool call) instead of
+ * asking for JSON in the prompt. Off by default: it changes what the models are doing, so a
+ * comparison run should say which mode it used (it is recorded in the game and the scorecard).
+ */
+export function structuredOutputEnabled(): boolean {
+  return /^(1|true|yes|on)$/i.test(process.env.STRUCTURED_OUTPUT ?? '')
+}
+
 export interface AIProvider {
   name: string
   /** The model id this provider sends, after env overrides. */
@@ -31,9 +47,9 @@ export interface AIProvider {
   modelEnvVar: string
   /** Env var holding the API key - named in startup errors. */
   keyEnvVar: string
-  generate(prompt: string): Promise<string>
+  generate(prompt: string, opts?: GenerateOptions): Promise<string>
   /** Like generate(), plus the token counts the provider reported (undefined if it reported none). */
-  generateWithUsage(prompt: string): Promise<GenerateResult>
+  generateWithUsage(prompt: string, opts?: GenerateOptions): Promise<GenerateResult>
   /**
    * Ask the provider whether `model` exists. One cheap metadata GET, no tokens
    * spent. Called once at server boot by validateProviders(), never per turn.
@@ -43,7 +59,7 @@ export interface AIProvider {
 
 /** Adds generate() to a provider that implements generateWithUsage(). */
 function withGenerate(core: Omit<AIProvider, 'generate'>): AIProvider {
-  return { ...core, generate: async prompt => (await core.generateWithUsage(prompt)).text }
+  return { ...core, generate: async (prompt, opts) => (await core.generateWithUsage(prompt, opts)).text }
 }
 
 /**
@@ -112,7 +128,7 @@ function createGeminiProvider(): AIProvider {
     model: modelId,
     modelEnvVar: 'GEMINI_MODEL',
     keyEnvVar: 'GEMINI_API_KEY',
-    async generateWithUsage(prompt: string): Promise<GenerateResult> {
+    async generateWithUsage(prompt: string, opts?: GenerateOptions): Promise<GenerateResult> {
       if (!client) {
         const { GoogleGenerativeAI } = await import('@google/generative-ai')
         client = new GoogleGenerativeAI(key)
@@ -122,6 +138,7 @@ function createGeminiProvider(): AIProvider {
         generationConfig: {
           maxOutputTokens: 8192,
           temperature: 0.7,
+          ...(opts?.schema && structuredOutputEnabled() ? { responseMimeType: 'application/json' } : {}),
           ...(thinkingConfig ? { thinkingConfig } : {}),
         },
       })
@@ -178,7 +195,8 @@ function createOpenAIProvider(): AIProvider {
     model,
     modelEnvVar: 'OPENAI_MODEL',
     keyEnvVar: 'OPENAI_API_KEY',
-    async generateWithUsage(prompt: string): Promise<GenerateResult> {
+    async generateWithUsage(prompt: string, opts?: GenerateOptions): Promise<GenerateResult> {
+      const jsonMode = opts?.schema && structuredOutputEnabled() ? { response_format: { type: 'json_object' } } : {}
       return withRetry('openai', async () => {
         const res = await withTimeout(
           fetch(`${baseUrl}/chat/completions`, {
@@ -191,6 +209,7 @@ function createOpenAIProvider(): AIProvider {
               model,
               messages: [{ role: 'user', content: prompt }],
               ...tuning,
+              ...jsonMode,
             }),
           }),
           15000,
@@ -240,7 +259,11 @@ function createAnthropicProvider(): AIProvider {
     model,
     modelEnvVar: 'ANTHROPIC_MODEL',
     keyEnvVar: 'ANTHROPIC_API_KEY',
-    async generateWithUsage(prompt: string): Promise<GenerateResult> {
+    async generateWithUsage(prompt: string, opts?: GenerateOptions): Promise<GenerateResult> {
+      // A forced tool call is Anthropic's structured output: the reply arrives as the tool's input.
+      const forced = opts?.schema && structuredOutputEnabled()
+        ? { tools: [{ name: 'submit_orders', description: 'Submit your orders for this turn.', input_schema: opts.schema }], tool_choice: { type: 'tool', name: 'submit_orders' } }
+        : {}
       return withRetry('anthropic', async () => {
         const res = await withTimeout(
           fetch('https://api.anthropic.com/v1/messages', {
@@ -255,6 +278,7 @@ function createAnthropicProvider(): AIProvider {
               max_tokens: 4096,
               messages: [{ role: 'user', content: prompt }],
               ...thinking,
+              ...forced,
             }),
           }),
           15000,
@@ -262,12 +286,13 @@ function createAnthropicProvider(): AIProvider {
         )
         if (!res.ok) throw await httpError('Anthropic', res)
         const data = (await res.json()) as {
-          content?: { type: string; text?: string }[]
+          content?: { type: string; text?: string; input?: unknown }[]
           usage?: { input_tokens?: number; output_tokens?: number }
         }
+        const toolBlock = data.content?.find(b => b.type === 'tool_use')
         const textBlock = data.content?.find(b => b.type === 'text')
         return {
-          text: (textBlock?.text || '').trim(),
+          text: toolBlock ? JSON.stringify(toolBlock.input ?? {}) : (textBlock?.text || '').trim(),
           inputTokens: data.usage?.input_tokens,
           outputTokens: data.usage?.output_tokens,
         }

@@ -145,6 +145,7 @@ ANTHROPIC_API_KEY=...
 | `ANTHROPIC_MODEL` | `claude-sonnet-5` | Anthropic model override |
 | `SKIP_MODEL_CHECK` | _(unset)_ | Set to `1` to skip the startup model check |
 | `SCENARIO` | `default` | Starting position. `default` is the lopsided real-world map; `mirror` gives all three factions the same territory count, forces, stock, tech and warheads, so a result says more about the model than the map. Also pickable in the UI between games. Files live in `game/scenarios/` |
+| `STRUCTURED_OUTPUT` | _(off)_ | `1` uses each vendor's native structured output for faction orders: OpenAI JSON mode, Gemini `application/json`, and for Anthropic a forced `submit_orders` tool call. It changes what the models are doing, so it's recorded in the game and the summary. A server that rejects it (an OpenAI-compatible one without JSON mode) forfeits turns rather than silently falling back |
 | `SEED` | _(random per game)_ | Seed for every die roll (a number, or any text). The same seed replays the same dice, so the same orders give the same battles. The seed of each game is shown in the opening message and the end-of-game summary |
 | `<PROVIDER>_PRICE_INPUT_PER_M` / `_OUTPUT_PER_M` | _(built-in table)_ | Override the USD-per-million-token price used for the cost estimate, e.g. `OPENAI_PRICE_INPUT_PER_M=0.2` and `OPENAI_PRICE_OUTPUT_PER_M=1.2`. Set both. A model with no price shows tokens but no cost |
 

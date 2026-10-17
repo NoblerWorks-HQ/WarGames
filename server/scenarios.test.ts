@@ -100,3 +100,17 @@ describe('scenario persona note', () => {
     expect(mirror.startsWith(plain)).toBe(true)
   })
 })
+
+describe('structured output flag', () => {
+  it('is recorded in the game, survives reset and save/load', () => {
+    const a = new GameEngine({ seed: 1, structuredOutput: true })
+    a.reset()
+    expect(a.state.game.structuredOutput).toBe(true)
+    const b = new GameEngine({ seed: 2 })
+    b.reset()
+    expect(b.state.game.structuredOutput).toBe(false)
+    b.restore(a.snapshot())
+    b.reset()
+    expect(b.state.game.structuredOutput).toBe(true)
+  })
+})

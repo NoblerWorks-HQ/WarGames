@@ -13,7 +13,8 @@ project, the game is the harness for it. Last commit 2026-08-31.
 - [x] 2026-10-18 Save/load: autosave after every turn to `games/<id>.json`, `/api/games`, `/api/load`, Load dropdown. A restored game replays exactly like the original (test compares full state after a further turn, dice position included).
 - [x] 2026-10-18 Scorecard: `server/scorecard.ts`, `/api/scorecard`, table in the game-over summary, stored in each save.
 - [x] 2026-10-18 Mirror scenario: `SCENARIO=mirror`, `game/scenarios/`, UI picker, `/api/scenarios`, persona override note. Yield totals within 2, but terrain/coast still differ (Russia has no coast), so rotate models across seats for a fair comparison. Judgement call on which territories - change `game/scenarios/mirror.json`.
-- [ ] Native structured output, tournament mode (next).
+- [x] 2026-10-18 Native structured output: `STRUCTURED_OUTPUT=1`, recorded in the game and summary. JSON mode only for OpenAI/Gemini (no strict schema: unions of order shapes don't fit strict mode); Anthropic gets the loose schema through a forced tool call. **Request bodies are unit-tested but never sent to the real APIs** - run one game per provider with it on and check forfeits. Whether it actually reduces invalid replies is unmeasured; the scorecard's valid-order rate and forfeits will show it.
+- [ ] Tournament mode (next).
 - [ ] Load does not restore the elapsed timer or chat animations; saves from older engine versions are rejected (version 1 only).
 
 ## Phase 1 features (2026-10-18)

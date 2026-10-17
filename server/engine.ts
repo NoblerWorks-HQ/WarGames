@@ -141,6 +141,8 @@ export class GameEngine {
   seed: number
   /** Starting position: 'default' or a file in game/scenarios/. Applies from the next reset. */
   scenario: string
+  /** Whether faction replies use the vendors' native structured output (recorded in the game for provenance). */
+  structuredOutput: boolean
   /** Names the save file; set when a game begins. */
   gameId = ''
   /** Called after every finished turn (the server autosaves here). */
@@ -156,20 +158,23 @@ export class GameEngine {
   generation = 0
 
   /** With a `seed`, every game rolls the same dice stream; otherwise each game draws a fresh seed. */
-  constructor(opts: { seed?: number; scenario?: string } = {}) {
+  constructor(opts: { seed?: number; scenario?: string; structuredOutput?: boolean } = {}) {
     this.scenario = opts.scenario ?? 'default'
+    this.structuredOutput = opts.structuredOutput ?? false
     this.fixedSeed = opts.seed
     this.seed = opts.seed ?? randomSeed()
     this.rng = mulberry32(this.seed)
     this.state = loadScenario(this.scenario)
     this.state.game.seed = this.seed
     this.state.game.scenario = this.scenario
+    this.state.game.structuredOutput = this.structuredOutput
   }
 
   reset() {
     this.generation++
     this.state = loadScenario(this.scenario)
     this.state.game.scenario = this.scenario
+    this.state.game.structuredOutput = this.structuredOutput
     this.turnHistory = []
     this.chatLog = []
     this.pendingAlliances = new Map()
@@ -340,6 +345,7 @@ export class GameEngine {
     this.usage.restore(g.usage)
     this.seed = g.seed
     this.scenario = g.state.game.scenario ?? 'default'
+    this.structuredOutput = g.state.game.structuredOutput ?? false
     const rng = mulberry32(g.seed)
     if (g.rngState !== null) rng.setState(g.rngState)
     this.rng = rng

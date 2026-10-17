@@ -510,7 +510,7 @@ class WarGamesApp {
       <div class="summary-header">
         <div class="summary-title">GAME OVER</div>
         <div class="summary-victor" style="color:${victorColor}">${victorName} wins</div>
-        <div class="summary-subtitle">Turn ${this.state.game.turn} / ${this.state.game.maxTurns}${this.state.game.seed !== undefined ? ` &middot; seed ${this.state.game.seed}` : ''}${this.state.usage?.total.calls ? ` &middot; ${this.formatCost(this.state.usage.total.costUsd, this.state.usage.total.costComplete)}` : ''}</div>
+        <div class="summary-subtitle">Turn ${this.state.game.turn} / ${this.state.game.maxTurns}${this.state.game.seed !== undefined ? ` &middot; seed ${this.state.game.seed}` : ''}${this.state.game.scenario ? ` &middot; ${this.state.game.scenario}` : ''}${this.state.game.structuredOutput ? ' &middot; structured output' : ''}${this.state.usage?.total.calls ? ` &middot; ${this.formatCost(this.state.usage.total.costUsd, this.state.usage.total.costComplete)}` : ''}</div>
       </div>
       <div class="summary-section">
         <div class="summary-section-title">FINAL STANDINGS</div>

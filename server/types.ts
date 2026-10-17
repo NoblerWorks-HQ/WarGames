@@ -52,6 +52,8 @@ export interface GameState {
     seed?: number
     /** Starting position this game was set up from. */
     scenario?: string
+    /** True when faction replies used native structured output (STRUCTURED_OUTPUT=1). */
+    structuredOutput?: boolean
   }
   map: {
     territories: Record<string, Territory>

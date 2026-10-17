@@ -11,7 +11,7 @@ import { SaveStore } from './saves.js'
 import { buildScorecard } from './scorecard.js'
 
 // Validate AI provider on startup
-import { validateProviders, logProviderConfig } from './ai-provider.js'
+import { validateProviders, logProviderConfig, structuredOutputEnabled } from './ai-provider.js'
 try {
   logProviderConfig()
   await validateProviders()
@@ -53,7 +53,7 @@ if (!listScenarios().includes(scenario)) {
   console.error(`Unknown SCENARIO "${scenario}". Available: ${listScenarios().join(', ')}`)
   process.exit(1)
 }
-const engine = new GameEngine({ seed, scenario })
+const engine = new GameEngine({ seed, scenario, structuredOutput: structuredOutputEnabled() })
 
 // Every finished turn is written to games/<id>.json, so a game can be reloaded, resumed or compared later.
 const saves = new SaveStore(process.env.GAMES_DIR ? resolve(process.env.GAMES_DIR) : resolve(dirname(fileURLToPath(import.meta.url)), '../games'))

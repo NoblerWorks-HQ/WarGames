@@ -6,7 +6,7 @@
  */
 
 import { getProvider } from './ai-provider.js'
-import type { AIProvider } from './ai-provider.js'
+import type { AIProvider, GenerateOptions } from './ai-provider.js'
 import { estimateCost } from './pricing.js'
 import type { CallUsage } from './usage.js'
 import type { FactionOrders } from './types.js'
@@ -17,10 +17,31 @@ export const MAX_ORDERS = 3
 /** Longest strategy note a faction may keep between turns. */
 export const MAX_NOTES_CHARS = 300
 
+/** JSON Schema for a faction's reply. Deliberately loose on order fields: the engine validates them. */
+export const ORDERS_SCHEMA = {
+  type: 'object',
+  properties: {
+    orders: {
+      type: 'array',
+      maxItems: MAX_ORDERS,
+      items: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', enum: ['move', 'attack', 'fortify', 'recruit', 'trade', 'spy', 'research', 'diplomacy', 'build_nuke', 'nuke', 'break_alliance', 'message', 'hire_mercenary'] },
+        },
+        required: ['action'],
+      },
+    },
+    reasoning: { type: 'string' },
+    notes: { type: 'string', maxLength: MAX_NOTES_CHARS },
+  },
+  required: ['orders', 'reasoning'],
+} as const
+
 /** Call the provider and report tokens, latency and estimated cost to `onUsage`. */
-async function generateTracked(provider: AIProvider, prompt: string, onUsage?: (u: CallUsage) => void): Promise<string> {
+async function generateTracked(provider: AIProvider, prompt: string, onUsage?: (u: CallUsage) => void, opts?: GenerateOptions): Promise<string> {
   const started = Date.now()
-  const result = await provider.generateWithUsage(prompt)
+  const result = await provider.generateWithUsage(prompt, opts)
   onUsage?.({
     provider: provider.name,
     model: provider.model,
@@ -53,7 +74,7 @@ Each unit can move or attack once per turn. At most ${MAX_ORDERS} orders; extra 
 Format: {"orders":[{"action":"move|attack|fortify|recruit|trade|spy|research|diplomacy|build_nuke|nuke|break_alliance|message|hire_mercenary",...params}],"reasoning":"<1 sentence>","notes":"<optional, max 300 chars: a private memo to yourself, returned as yourNotes next turn>"}`
 
     console.log(`[${factionId}] Requesting orders from ${provider.name}...`)
-    const text = await generateTracked(provider, prompt, onUsage)
+    const text = await generateTracked(provider, prompt, onUsage, { schema: ORDERS_SCHEMA })
     console.log(`[${factionId}] Raw response:`, text.slice(0, 300))
 
     // Strip markdown code fences if present

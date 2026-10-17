@@ -32,6 +32,8 @@ export interface ScorecardRow {
 
 export interface Scorecard {
   seed?: number
+  scenario?: string
+  structuredOutput?: boolean
   turns: number
   status: GameState['game']['status']
   victor: string | null
@@ -79,5 +81,5 @@ export function buildScorecard(state: GameState, turnHistory: TurnResult[], usag
     }
   })
   for (const r of rows) r.rank = 1 + rows.filter(o => o.score > r.score).length
-  return { seed: state.game.seed, turns: state.game.turn, status: state.game.status, victor: state.game.victor, rows }
+  return { seed: state.game.seed, scenario: state.game.scenario, structuredOutput: state.game.structuredOutput, turns: state.game.turn, status: state.game.status, victor: state.game.victor, rows }
 }
