@@ -2,6 +2,7 @@
 
 AI-powered geopolitical strategy simulation. Three great powers - NATO, Russia, and China - compete for territory, resources, and global dominance on an interactive map. Each faction is controlled by an AI making strategic decisions every turn.
 
+[![Website](https://img.shields.io/badge/Website-noblerworks--hq.github.io%2FWarGames-red)](https://noblerworks-hq.github.io/WarGames/)
 ![AI Strategy](https://img.shields.io/badge/AI-Strategy%20Simulation-red)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)
 ![Leaflet](https://img.shields.io/badge/Leaflet-199900?logo=leaflet&logoColor=white)

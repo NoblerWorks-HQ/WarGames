@@ -10,8 +10,18 @@
 <meta property="og:description" content="NATO, Russia and China, each commanded by an LLM, compete for global dominance on a live map.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://noblerworks-hq.github.io/WarGames/">
-<meta property="og:image" content="https://noblerworks-hq.github.io/WarGames/img/wargames-nuclear-launch-detected.png">
+<meta property="og:image" content="https://noblerworks-hq.github.io/WarGames/img/social.png">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta property="og:site_name" content="War Games">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:title" content="War Games">
+<meta name="twitter:description" content="AI-powered geopolitical strategy simulation. NATO, Russia and China, each commanded by an LLM, fight for global dominance on an interactive map.">
+<meta name="twitter:image" content="https://noblerworks-hq.github.io/WarGames/img/social.png">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "War Games", "description": "AI-powered geopolitical strategy simulation. NATO, Russia and China, each commanded by an LLM, fight for global dominance on an interactive map.", "url": "https://noblerworks-hq.github.io/WarGames/", "image": "https://noblerworks-hq.github.io/WarGames/img/social.png", "codeRepository": "https://github.com/NoblerWorks-HQ/WarGames", "license": "https://opensource.org/licenses/MIT", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "author": {"@type": "Organization", "name": "Nobler Works", "url": "https://noblerworks.com/"}, "applicationCategory": "GameApplication", "operatingSystem": "Any (Node.js 20+)"}</script>
 <style>
 :root{--bg:#000;--panel:#0d0d0d;--line:#222;--text:#f2f2f2;--muted:#9a9a9a;--nato:#3498db;--russia:#e74c3c;--china:#f1c40f;--accent:#e74c3c}
 *{box-sizing:border-box}
@@ -54,15 +64,25 @@ p.note{color:var(--muted)}
 footer{border-top:1px solid var(--line);padding:32px 0;color:var(--muted);font-size:14px;text-align:center}
 footer a{color:var(--text)}
 @media (max-width:560px){nav a{margin-left:12px}.hero{padding-top:48px}}
+@media (prefers-color-scheme:light){:root{--bg:#fff;--panel:#f6f6f6;--line:#dcdcdc;--text:#111;--muted:#555;--nato:#1f6fb0;--russia:#c0392b;--china:#9a7b00;--accent:#c0392b}}
+.skip{position:absolute;left:-9999px;top:8px;background:var(--accent);color:#fff;padding:8px 14px;border-radius:6px;z-index:10}
+.skip:focus{left:8px}
+a:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+section[id]{scroll-margin-top:16px}
+.social{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.social a{text-decoration:none}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+@media print{header.top,.btns,.skip{display:none}body{background:#fff;color:#000}}
 </style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
   <a class="brand" href="#">War Games</a>
   <nav><a href="#how">How it works</a><a href="#screens">Screens</a><a href="#run">Run it</a><a href="https://github.com/NoblerWorks-HQ/WarGames">GitHub</a></nav>
 </div></header>
 
-<main>
+<main id="main">
 <div class="wrap">
   <div class="hero">
     <h1>War Games</h1>
@@ -121,6 +141,6 @@ npm run dev</pre>
 </div></section>
 </main>
 
-<footer><div class="wrap">Built by <a href="https://noblerworks.com/">Nobler Works</a> · <a href="https://github.com/NoblerWorks-HQ/WarGames">Source on GitHub</a></div></footer>
+<footer><div class="wrap"><div class="social"><a href="https://noblerworks.com/">Website</a><a href="https://x.com/Nobler_Works">X</a><a href="https://www.youtube.com/@NoblerWorks">YouTube</a><a href="https://www.tiktok.com/@noblerworks">TikTok</a><a href="https://www.threads.com/@noblerworks">Threads</a></div>Built by <a href="https://noblerworks.com/">Nobler Works</a> · <a href="https://github.com/NoblerWorks-HQ/WarGames">Source on GitHub</a></div></footer>
 </body>
 </html>

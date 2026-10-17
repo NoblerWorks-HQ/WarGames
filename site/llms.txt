@@ -1,0 +1,7 @@
+# War Games
+
+> AI-powered geopolitical strategy simulation. NATO, Russia and China, each commanded by an LLM, fight for global dominance on an interactive map.
+
+- [Source code and README](https://github.com/NoblerWorks-HQ/WarGames)
+- [Landing page](https://noblerworks-hq.github.io/WarGames/)
+- [Nobler Works](https://noblerworks.com/)
