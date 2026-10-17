@@ -1,33 +1,43 @@
 /**
  * Turn resolver tests. The engine is pure logic over game/initial-world.json;
  * the only I/O is the AI layer, which is mocked here, so no API key is needed.
- * Dice are pinned by mocking Math.random: a die is floor(random * 6) + 1.
+ * Dice are pinned by replacing engine.rng: a die is floor(rng() * 6) + 1.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FactionOrders, Order } from './types.js'
+import type { CallUsage } from './usage.js'
 
 const orders: Record<string, Order[]> = {}
+const notes: Record<string, string> = {}
+
+/** What every mocked AI call reports to the engine's usage tracker. */
+const CALL_USAGE: CallUsage = { provider: 'gemini', model: 'test-model', inputTokens: 100, outputTokens: 50, latencyMs: 10, costUsd: 0.001 }
 
 vi.mock('./ai.js', () => ({
-  getFactionOrders: vi.fn(async (factionId: string): Promise<FactionOrders> => ({
-    orders: orders[factionId] ?? [],
-    reasoning: 'test',
-  })),
-  getNarrative: vi.fn(async () => 'narrative'),
+  getFactionOrders: vi.fn(async (factionId: string, _persona: string, _briefing: string, onUsage?: (u: CallUsage) => void): Promise<FactionOrders> => {
+    onUsage?.(CALL_USAGE)
+    return { orders: orders[factionId] ?? [], reasoning: 'test', notes: notes[factionId] }
+  }),
+  getNarrative: vi.fn(async (_summary: string, onUsage?: (u: CallUsage) => void) => {
+    onUsage?.(CALL_USAGE)
+    return 'narrative'
+  }),
 }))
 
 const { GameEngine, StaleTurnError } = await import('./engine.js')
 const ai = await import('./ai.js')
+const defaultOrdersMock = vi.mocked(ai.getFactionOrders).getMockImplementation()!
 
 /** Pin every die roll this turn to `face` (1-6). */
 function dice(face: number) {
-  vi.spyOn(Math, 'random').mockReturnValue((face - 1) / 6 + 0.01)
+  engine.rng = () => (face - 1) / 6 + 0.01
 }
 
 let engine: InstanceType<typeof GameEngine>
 
 beforeEach(() => {
   for (const k of Object.keys(orders)) delete orders[k]
+  for (const k of Object.keys(notes)) delete notes[k]
   vi.spyOn(console, 'log').mockImplementation(() => {})
   engine = new GameEngine()
   engine.reset()
@@ -35,6 +45,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.mocked(ai.getFactionOrders).mockImplementation(defaultOrdersMock)
 })
 
 const unit = (fid: string, id: string) => engine.state.factions[fid].units.find(u => u.id === id)
@@ -148,6 +159,7 @@ describe('orders', () => {
   })
 
   it('research spends knowledge and raises the level; maxed tech is refused', async () => {
+    engine.state.factions.nato.tech.nuclear = 3
     orders.china = [{ action: 'research', tech: 'military' }]
     orders.nato = [{ action: 'research', tech: 'nuclear' }] // already 3
     await engine.executeTurn()
@@ -367,9 +379,9 @@ describe('spying', () => {
 
 describe('nukes', () => {
   it('a strike destroys every unit and irradiates the territory', async () => {
-    // China has ICBM tech (nuclear 2), so range is unlimited. NATO is dropped to
-    // nuclear 2 so its second strike (nuclear 3, random target) stays out of it.
-    engine.state.factions.nato.tech.nuclear = 2
+    // China is given ICBM tech (nuclear 2), so its range is unlimited. NATO starts
+    // at nuclear 1, so there is no second strike to answer it.
+    engine.state.factions.china.tech.nuclear = 2
     orders.china = [{ action: 'nuke', target: 'australia' }]
     const nukesBefore = engine.state.factions.china.nukes
     const result = await engine.executeTurn()
@@ -437,6 +449,303 @@ describe('game end', () => {
   })
 })
 
+describe('seeded dice', () => {
+  it('the same seed replays the same rolls; a different seed does not', () => {
+    const a = new GameEngine({ seed: 42 })
+    const b = new GameEngine({ seed: 42 })
+    const c = new GameEngine({ seed: 43 })
+    const roll = (e: InstanceType<typeof GameEngine>) => Array.from({ length: 5 }, () => e.rng())
+    const first = roll(a)
+    expect(roll(b)).toEqual(first)
+    expect(roll(c)).not.toEqual(first)
+    expect(first.every(n => n >= 0 && n < 1)).toBe(true)
+  })
+
+  it('reset() restarts a fixed seed, and the seed is part of the game state', () => {
+    const e = new GameEngine({ seed: 7 })
+    e.reset()
+    const first = [e.rng(), e.rng()]
+    e.reset()
+    expect([e.rng(), e.rng()]).toEqual(first)
+    expect(e.state.game.seed).toBe(7)
+  })
+
+  it('without a fixed seed each game draws its own and reports it', () => {
+    const e = new GameEngine()
+    e.reset()
+    const seen = new Set<number>()
+    for (let i = 0; i < 5; i++) { e.reset(); seen.add(e.state.game.seed!) }
+    expect(seen.size).toBeGreaterThan(1)
+  })
+
+  it('two engines with one seed fight an identical battle', async () => {
+    const play = async () => {
+      const e = new GameEngine({ seed: 99 })
+      e.reset()
+      orders.russia = [{ action: 'attack', unit: 'russia-art-1', target: 'eastern_europe' }]
+      const result = await e.executeTurn()
+      return result.events.map(ev => ev.description)
+    }
+    expect(await play()).toEqual(await play())
+  })
+})
+
+describe('fallout', () => {
+  /** China nukes Australia on turn 1 (ICBM range). */
+  async function nukeAustralia() {
+    engine.state.factions.china.tech.nuclear = 2
+    orders.china = [{ action: 'nuke', target: 'australia' }]
+    await engine.executeTurn()
+    delete orders.china
+  }
+
+  it('wipes the yield for five turns, then restores it', async () => {
+    const original = { ...territory('australia').resources }
+    expect(Object.keys(original).length).toBeGreaterThan(0)
+    await nukeAustralia() // turn 1
+    expect(territory('australia').resources).toEqual({})
+    expect(territory('australia').fallout!.resources).toEqual(original)
+    for (let i = 0; i < 5; i++) await engine.executeTurn() // turns 2-6: still contaminated
+    expect(territory('australia').resources).toEqual({})
+    await engine.executeTurn() // turn 7
+    expect(territory('australia').resources).toEqual(original)
+    expect(territory('australia').fallout).toBeUndefined()
+    expect(engine.chatLog.some(m => m.message.includes('Fallout clears over Australia'))).toBe(true)
+  })
+
+  it('a land captured during fallout pays nothing until it clears', async () => {
+    await nukeAustralia()
+    engine.state.factions.china.units.push({ id: 'china-inf-9', type: 'infantry', territory: 'australia', hp: 2, xp: 0 })
+    territory('australia').owner = 'china'
+    // Uranium has no interest, and Australia is the only uranium source here besides the Oceania bonus
+    const uranium = () => engine.state.factions.china.resources.uranium
+    const incomeOf = async () => { const before = uranium(); await engine.executeTurn(); return uranium() - before }
+    const duringFallout = await incomeOf() // turn 2
+    for (let i = 0; i < 4; i++) await engine.executeTurn() // turns 3-6
+    const afterFallout = await incomeOf() // turn 7
+    expect(afterFallout - duringFallout).toBe(5) // Australia's own uranium yield is back
+  })
+
+  it('a second strike on contaminated land restarts the clock but keeps the original yield', async () => {
+    const original = { ...territory('australia').resources }
+    await nukeAustralia() // turn 1
+    engine.state.factions.china.nukes = 1
+    await engine.executeTurn() // turn 2
+    await engine.executeTurn() // turn 3
+    orders.china = [{ action: 'nuke', target: 'australia' }]
+    await engine.executeTurn() // turn 4: struck again
+    delete orders.china
+    expect(territory('australia').fallout).toEqual({ until: 10, resources: original })
+  })
+
+  it('is shown to the factions in their briefing', async () => {
+    await nukeAustralia()
+    await engine.executeTurn()
+    expect(lastBriefing('china').visibleMap.australia.falloutClearsOnTurn).toBe(7)
+  })
+})
+
+describe('nuclear start', () => {
+  it('everyone starts at nuclear 1 with a few warheads and nobody has second strike', async () => {
+    for (const f of Object.values(engine.state.factions)) {
+      expect(f.tech.nuclear).toBe(1)
+      expect(f.nukes).toBeGreaterThan(0)
+      expect(f.nukes).toBeLessThanOrEqual(2)
+    }
+    // A strike on Russia is not answered: no one can retaliate yet
+    orders.nato = [{ action: 'nuke', target: 'western_russia' }]
+    const natoTerritories = Object.values(engine.state.map.territories).filter(t => t.owner === 'nato').length
+    await engine.executeTurn()
+    expect(Object.values(engine.state.map.territories).filter(t => t.owner === 'nato')).toHaveLength(natoTerritories)
+  })
+
+  it('second strike must be researched: level 3 retaliates, level 2 does not', async () => {
+    engine.state.factions.russia.tech.nuclear = 3
+    orders.nato = [{ action: 'nuke', target: 'western_russia' }]
+    const natoTerritories = Object.values(engine.state.map.territories).filter(t => t.owner === 'nato').length
+    const result = await engine.executeTurn()
+    expect(result.events.some(e => e.type === 'nuke')).toBe(true)
+    expect(Object.values(engine.state.map.territories).filter(t => t.owner === 'nato')).toHaveLength(natoTerritories - 1)
+  })
+})
+
+describe('strategy notes', () => {
+  it('returns a faction its own notes next turn, keeps them when omitted, replaces them when rewritten', async () => {
+    notes.nato = 'Plan: take Ukraine by turn 4'
+    await engine.executeTurn()
+    delete notes.nato
+    await engine.executeTurn()
+    expect(lastBriefing('nato').yourNotes).toBe('Plan: take Ukraine by turn 4')
+    expect(lastBriefing('russia').yourNotes).toBeUndefined()
+    notes.nato = 'Plan changed'
+    await engine.executeTurn()
+    delete notes.nato
+    await engine.executeTurn()
+    expect(lastBriefing('nato').yourNotes).toBe('Plan changed')
+  })
+
+  it('are cleared when the game is reset and never reach the other factions', async () => {
+    notes.china = 'secret'
+    await engine.executeTurn()
+    await engine.executeTurn()
+    expect(JSON.stringify(lastBriefing('nato'))).not.toContain('secret')
+    engine.reset()
+    expect(engine.notes).toEqual({})
+  })
+})
+
+describe('narrator input', () => {
+  const lastNarration = () => vi.mocked(ai.getNarrative).mock.calls.at(-1)![0]
+
+  it('gets public statements, betrayals and standings, but not private messages or invalid orders', async () => {
+    engine.state.factions.nato.alliances = ['china']
+    engine.state.factions.china.alliances = ['nato']
+    orders.nato = [
+      { action: 'message', message: 'We come in peace' },
+      { action: 'message', to: 'russia', message: 'secret handshake' },
+      { action: 'break_alliance', to: 'china' },
+    ]
+    orders.russia = [{ action: 'move', unit: 'no-such-unit', to: 'ukraine' }]
+    await engine.executeTurn()
+    const brief = lastNarration()
+    expect(brief).toContain('We come in peace')
+    expect(brief).toContain('BETRAYS')
+    expect(brief).toMatch(/NATO.*2 warheads/)
+    expect(brief).not.toContain('secret handshake')
+    expect(brief).not.toContain('unknown unit')
+  })
+
+  it('carries the previous bulletin forward for continuity', async () => {
+    await engine.executeTurn()
+    expect(lastNarration()).not.toContain('Previous bulletin')
+    await engine.executeTurn()
+    expect(lastNarration()).toContain('Previous bulletin (continue the story, do not repeat it): narrative')
+  })
+})
+
+describe('usage tracking', () => {
+  it('tallies calls, tokens and cost per role, narrator included', async () => {
+    await engine.executeTurn()
+    const u = engine.usageSnapshot()
+    expect(Object.keys(u.roles).sort()).toEqual(['china', 'narrator', 'nato', 'russia'])
+    expect(u.roles.nato).toMatchObject({ calls: 1, inputTokens: 100, outputTokens: 50, costComplete: true })
+    expect(u.total).toMatchObject({ calls: 4, inputTokens: 400, outputTokens: 200, costComplete: true })
+    expect(u.total.costUsd).toBeCloseTo(0.004)
+    await engine.executeTurn()
+    expect(engine.usageSnapshot().total.calls).toBe(8)
+  })
+
+  it('marks the cost incomplete when a call has no price, and resets with the game', async () => {
+    vi.mocked(ai.getNarrative).mockImplementationOnce(async (_s: string, onUsage?: (u: CallUsage) => void) => {
+      onUsage?.({ ...CALL_USAGE, costUsd: null })
+      return 'narrative'
+    })
+    await engine.executeTurn()
+    expect(engine.usageSnapshot().total.costComplete).toBe(false)
+    expect(engine.usageSnapshot().roles.nato.costComplete).toBe(true)
+    engine.reset()
+    expect(engine.usageSnapshot().total.calls).toBe(0)
+  })
+})
+
+describe('turn controls', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { engine.stop(); vi.useRealTimers() })
+  const settle = () => vi.advanceTimersByTimeAsync(1)
+
+  it('start() plays a turn every interval', async () => {
+    engine.start(5000)
+    await vi.advanceTimersByTimeAsync(5000)
+    await settle()
+    expect(engine.state.game.turn).toBe(1)
+    await vi.advanceTimersByTimeAsync(5000)
+    await settle()
+    expect(engine.state.game.turn).toBe(2)
+  })
+
+  it('pause() stops new turns without losing the game; resume() plays one immediately', async () => {
+    engine.start(5000)
+    await vi.advanceTimersByTimeAsync(5000)
+    await settle()
+    engine.pause()
+    expect(engine.control()).toMatchObject({ running: true, paused: true })
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(engine.state.game.turn).toBe(1)
+    engine.resume()
+    await settle()
+    expect(engine.state.game.turn).toBe(2)
+    expect(engine.control().paused).toBe(false)
+    await vi.advanceTimersByTimeAsync(5000)
+    await settle()
+    expect(engine.state.game.turn).toBe(3)
+  })
+
+  it('step() plays exactly one turn and stays paused, starting a game if needed', async () => {
+    expect(engine.control().running).toBe(false)
+    expect(engine.step()).toBe(true)
+    await settle()
+    expect(engine.state.game.turn).toBe(1)
+    expect(engine.control()).toMatchObject({ running: true, paused: true })
+    await vi.advanceTimersByTimeAsync(60000)
+    expect(engine.state.game.turn).toBe(1)
+    expect(engine.step()).toBe(true)
+    await settle()
+    expect(engine.state.game.turn).toBe(2)
+  })
+
+  it('step() while a turn is in flight is refused', async () => {
+    let release!: () => void
+    const gate = new Promise<void>(r => { release = r })
+    vi.mocked(ai.getFactionOrders).mockImplementation(async () => {
+      await gate
+      return { orders: [], reasoning: 'late' }
+    })
+    expect(engine.step()).toBe(true)
+    await settle()
+    expect(engine.control().turnExecuting).toBe(true)
+    expect(engine.step()).toBe(false)
+    release()
+    await settle()
+    expect(engine.control().turnExecuting).toBe(false)
+    expect(engine.state.game.turn).toBe(1)
+  })
+
+  it('step() on a running game pauses it first', async () => {
+    engine.start(5000)
+    expect(engine.step()).toBe(true)
+    await settle()
+    expect(engine.control().paused).toBe(true)
+    await vi.advanceTimersByTimeAsync(20000)
+    expect(engine.state.game.turn).toBe(1)
+  })
+
+  it('setIntervalMs() re-times a running game', async () => {
+    engine.start(60000)
+    engine.setIntervalMs(5000)
+    await vi.advanceTimersByTimeAsync(5000)
+    await settle()
+    expect(engine.state.game.turn).toBe(1)
+    expect(engine.control().intervalMs).toBe(5000)
+  })
+
+  it('setIntervalMs() while paused does not restart the timer', async () => {
+    engine.start(5000)
+    engine.pause()
+    engine.setIntervalMs(5000)
+    await vi.advanceTimersByTimeAsync(20000)
+    expect(engine.state.game.turn).toBe(0)
+  })
+
+  it('stops itself when the game finishes', async () => {
+    engine.start(5000)
+    engine.state.game.maxTurns = 1
+    await vi.advanceTimersByTimeAsync(5000)
+    await settle()
+    expect(engine.state.game.status).toBe('finished')
+    expect(engine.control()).toMatchObject({ running: false, paused: false })
+  })
+})
+
 describe('stop -> start mid-turn', () => {
   it('discards a turn that was in flight when the game was reset', async () => {
     let release!: () => void
@@ -452,5 +761,20 @@ describe('stop -> start mid-turn', () => {
     expect(engine.state.game.turn).toBe(0)
     expect(engine.turnHistory).toHaveLength(0)
     expect(engine.chatLog.some(m => m.message.includes('late') || m.message.includes('forfeit'))).toBe(false)
+  })
+
+  it('does not count a discarded turn\'s tokens against the new game', async () => {
+    let release!: () => void
+    const gate = new Promise<void>(r => { release = r })
+    vi.mocked(ai.getFactionOrders).mockImplementation(async (_f, _p, _b, onUsage) => {
+      await gate
+      onUsage?.(CALL_USAGE)
+      return { orders: [], reasoning: 'late' }
+    })
+    const inFlight = engine.executeTurn()
+    engine.reset()
+    release()
+    await expect(inFlight).rejects.toBeInstanceOf(StaleTurnError)
+    expect(engine.usageSnapshot().total.calls).toBe(0)
   })
 })

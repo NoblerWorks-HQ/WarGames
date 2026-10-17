@@ -15,9 +15,11 @@ Starting positions are deliberately asymmetric (they follow the real-world balan
 
 | ID | Name | Territories | Units | Tech (mil/eco/int/nuc) | Warheads |
 |----|------|-------------|-------|------------------------|----------|
-| nato | NATO / United States | 8 | 8 | 2 / 2 / 2 / 3 | 5,044 |
-| russia | Russian Federation | 3 | 6 | 2 / 0 / 2 / 3 | 5,580 |
-| china | People's Republic of China | 2 | 8 | 1 / 2 / 1 / 2 | 500 |
+| nato | NATO / United States | 8 | 8 | 2 / 2 / 2 / 1 | 2 |
+| russia | Russian Federation | 3 | 6 | 2 / 0 / 2 / 1 | 2 |
+| china | People's Republic of China | 2 | 8 | 1 / 2 / 1 / 1 | 1 |
+
+Everyone starts level on nuclear (tech 1, a couple of warheads), so nobody can retaliate until someone researches Second Strike.
 
 The other 12 territories start neutral and are held by mercenaries (1-4 each).
 
@@ -64,7 +66,7 @@ Every turn, in this order, each faction:
 
 ## Turn structure
 
-Each turn, every faction submits up to **3** orders as JSON (extra orders are dropped).
+Each turn, every faction submits up to **3** orders as JSON (extra orders are dropped), plus an optional private `notes` memo of up to 300 characters.
 All factions are briefed at once and order at the same time. Their orders are then resolved
 faction by faction, and **the faction that resolves first rotates every turn**
 (NATO first on turn 1, Russia on turn 2, China on turn 3, ...).
@@ -117,6 +119,18 @@ substitutes another unit for you.
 - An Oathbreaker can never form another alliance, and nobody can ally with one.
 - Messages, trades and proposals from other factions arrive in your briefing's `inbox` (the last 10 are shown).
 
+## Notes
+
+A faction can add `"notes": "..."` (up to 300 characters) to its reply. It comes back in that
+faction's next briefing as `yourNotes`, and is kept until the faction sends new notes. Notes are
+private: no other faction and not the narrator ever sees them, but the War Room view shows them.
+
+## Dice
+
+Every die roll comes from a seeded generator. Set `SEED` and the same orders give the same
+battles; otherwise each game draws a new seed. The seed is announced when the game starts and
+shown in the end-of-game summary.
+
 ## Fog of war
 
 You see your territories, territories adjacent to them or to your units, your allies'
@@ -147,8 +161,10 @@ movement, and research costs in resources other than knowledge and uranium.
 ## Nuclear exchange
 
 - Below nuclear 2 the target has to be adjacent to a territory you own. From nuclear 2 any territory is in range. You can't nuke your own or an ally's territory.
-- A strike destroys every unit there, whoever owns them. The territory loses its fortification,
-  becomes neutral, and its yield is wiped for good.
+- A strike destroys every unit there, whoever owns them. The territory loses its fortification
+  and becomes neutral, and its yield is wiped for the next 5 turns (**fallout**). After that the
+  yield returns to whoever holds the land; land captured during fallout pays nothing until then,
+  and a second strike restarts the clock. Briefings show `falloutClearsOnTurn`.
 - **Second strike**: if the target belonged to a faction with nuclear 3 and at least one warhead,
   that faction automatically fires one back at a random territory you own. A retaliation
   doesn't trigger another retaliation.
@@ -168,6 +184,8 @@ If nobody has won by turn 20, the highest score wins:
 
 ## Order format
 
+The `notes` field is optional.
+
 ```json
 {
   "orders": [
@@ -175,7 +193,8 @@ If nobody has won by turn 20, the highest score wins:
     {"action": "recruit", "type": "infantry", "territory": "western_na"},
     {"action": "diplomacy", "to": "china", "proposal": "alliance"}
   ],
-  "reasoning": "Expanding south while courting Beijing"
+  "reasoning": "Expanding south while courting Beijing",
+  "notes": "Ukraine by turn 4; keep China sweet until Siberia is fortified"
 }
 ```
 

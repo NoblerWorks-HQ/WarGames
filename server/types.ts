@@ -8,6 +8,8 @@ export interface Territory {
   fortified: boolean
   resources: Record<string, number>
   mercenaries: number
+  /** Set by a nuclear strike: the yield is wiped until this turn, then restored. */
+  fallout?: { until: number; resources: Record<string, number> }
 }
 
 export interface Unit {
@@ -46,6 +48,8 @@ export interface GameState {
     status: 'active' | 'finished'
     startedAt: string | null
     victor: string | null
+    /** Seed of the dice for this game; the same seed replays the same rolls. */
+    seed?: number
   }
   map: {
     territories: Record<string, Territory>
@@ -79,6 +83,8 @@ export interface Order {
 export interface FactionOrders {
   orders: Order[]
   reasoning?: string
+  /** Private memo the faction wants back in its next briefing (replaces its previous notes). */
+  notes?: string
 }
 
 export interface TurnResult {

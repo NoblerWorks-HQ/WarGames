@@ -86,8 +86,8 @@
         { "id": "nato-inf-6", "type": "infantry", "territory": "mediterranean", "hp": 2, "xp": 0 },
         { "id": "nato-inf-7", "type": "infantry", "territory": "australia", "hp": 2, "xp": 0 }
       ],
-      "tech": { "military": 2, "economic": 2, "intelligence": 2, "nuclear": 3 },
-      "nukes": 5044,
+      "tech": { "military": 2, "economic": 2, "intelligence": 2, "nuclear": 1 },
+      "nukes": 2,
       "oathbreaker": false,
       "alliances": [],
       "pacts": [],
@@ -106,8 +106,8 @@
         { "id": "russia-inf-4", "type": "infantry", "territory": "central_asia", "hp": 2, "xp": 0 },
         { "id": "russia-art-1", "type": "artillery", "territory": "western_russia", "hp": 2, "xp": 0 }
       ],
-      "tech": { "military": 2, "economic": 0, "intelligence": 2, "nuclear": 3 },
-      "nukes": 5580,
+      "tech": { "military": 2, "economic": 0, "intelligence": 2, "nuclear": 1 },
+      "nukes": 2,
       "oathbreaker": false,
       "alliances": [],
       "pacts": [],
@@ -128,8 +128,8 @@
         { "id": "china-arm-1", "type": "armor", "territory": "east_asia", "hp": 2, "xp": 0 },
         { "id": "china-art-1", "type": "artillery", "territory": "east_asia", "hp": 2, "xp": 0 }
       ],
-      "tech": { "military": 1, "economic": 2, "intelligence": 1, "nuclear": 2 },
-      "nukes": 500,
+      "tech": { "military": 1, "economic": 2, "intelligence": 1, "nuclear": 1 },
+      "nukes": 1,
       "oathbreaker": false,
       "alliances": [],
       "pacts": [],

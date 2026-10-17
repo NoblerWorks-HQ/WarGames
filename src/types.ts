@@ -9,6 +9,7 @@ export interface Territory {
   fortified: boolean
   resources: Record<string, number>
   mercenaries: number
+  fallout?: { until: number; resources: Record<string, number> }
 }
 
 export interface Unit {
@@ -55,6 +56,7 @@ export interface GameState {
     status: 'active' | 'finished'
     startedAt: string | null
     victor: string | null
+    seed?: number
   }
   map: {
     territories: Record<string, Territory>
@@ -68,6 +70,39 @@ export interface GameState {
     diplomatic: { alliancesRequired: number; turnsRequired: number }
   }
   recentEvents?: GameEvent[]
+  control?: GameControl
+  usage?: UsageSnapshot
+}
+
+export interface GameControl {
+  running: boolean
+  paused: boolean
+  turnExecuting: boolean
+  intervalMs: number
+}
+
+export interface RoleUsage {
+  provider: string
+  model: string
+  calls: number
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
+  latencyMs: number
+  costComplete: boolean
+}
+
+export interface UsageSnapshot {
+  roles: Record<string, RoleUsage>
+  total: { calls: number; inputTokens: number; outputTokens: number; costUsd: number; costComplete: boolean }
+}
+
+export interface TurnResult {
+  turn: number
+  timestamp: string
+  orders: Record<string, { orders: { action: string; [k: string]: unknown }[]; reasoning?: string; notes?: string }>
+  events: GameEvent[]
+  narrative?: string
 }
 
 export interface ChatMessage {

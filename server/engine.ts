@@ -3,6 +3,9 @@ import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import type { GameState, Unit, Order, FactionOrders, TurnResult, GameEvent, ChatMessage } from './types.js'
 import { getFactionOrders, getNarrative } from './ai.js'
+import { mulberry32, randomSeed } from './rng.js'
+import { UsageTracker } from './usage.js'
+import type { UsageSnapshot } from './usage.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -32,6 +35,9 @@ const personas: Record<string, string> = {
   russia: loadPersona('russia'),
   china: loadPersona('china')
 }
+
+/** Turns of lost yield after a nuclear strike (the next FALLOUT_TURNS turns pay nothing). */
+const FALLOUT_TURNS = 5
 
 /** Turns an unanswered alliance proposal stays open. */
 const PROPOSAL_TTL = 2
@@ -75,15 +81,33 @@ export class GameEngine {
   /** Last unit number issued per "faction-type" prefix, so ids never repeat. */
   unitSerial: Record<string, number> = {}
   surpriseAttackBonus: Record<string, number> = {}
+  /** Private memo each faction asked to get back next turn. */
+  notes: Record<string, string> = {}
+  /** Public statements made this turn, for the narrator. */
+  turnMessages: { from: string; text: string }[] = []
+  /** Tokens, latency and estimated cost per AI role for the current game. */
+  usage = new UsageTracker()
+  /** Source of every die roll; seeded so a game can be replayed. Tests may replace it. */
+  rng: () => number
+  seed: number
+  private fixedSeed: number | undefined
   running = false
+  /** True while a started game is suspended between turns (pause/step). */
+  paused = false
   turnExecuting = false
+  intervalMs = 10000
   turnInterval: ReturnType<typeof setInterval> | null = null
   /** Bumped by reset(); a turn that started under an older generation is discarded. */
   generation = 0
 
-  constructor() {
+  /** With a `seed`, every game rolls the same dice stream; otherwise each game draws a fresh seed. */
+  constructor(opts: { seed?: number } = {}) {
+    this.fixedSeed = opts.seed
+    this.seed = opts.seed ?? randomSeed()
+    this.rng = mulberry32(this.seed)
     const raw = readFileSync(resolve(__dirname, '../game/initial-world.json'), 'utf-8')
     this.state = JSON.parse(raw)
+    this.state.game.seed = this.seed
   }
 
   reset() {
@@ -100,52 +124,118 @@ export class GameEngine {
     this.actedUnits = new Set()
     this.unitSerial = {}
     this.surpriseAttackBonus = {}
+    this.notes = {}
+    this.turnMessages = []
+    this.usage = new UsageTracker()
+    this.paused = false
+    this.seed = this.fixedSeed ?? randomSeed()
+    this.rng = mulberry32(this.seed)
+    this.state.game.seed = this.seed
     this.state.game.startedAt = new Date().toISOString()
     this.state.game.turn = 0
     this.state.game.status = 'active'
     this.state.game.victor = null
   }
 
-  start(intervalMs: number = 10000) {
+  /** Begin a fresh game and run a turn every `intervalMs`. */
+  start(intervalMs: number = this.intervalMs) {
     console.log(`engine.start() called, running=${this.running}, intervalMs=${intervalMs}`)
     if (this.running) return
+    this.begin(intervalMs)
+    this.schedule()
+  }
+
+  private begin(intervalMs: number) {
+    this.intervalMs = intervalMs
     this.reset()
     this.running = true
     this.turnExecuting = false
-    this.addChat('command', 'gm', 'The Arbiter', 'WAR GAMES INITIATED. Three factions claim their territories across the globe...')
-
-    console.log(`Setting up turn interval every ${intervalMs}ms...`)
-    this.turnInterval = setInterval(async () => {
-      console.log(`>>> setInterval fired! status=${this.state.game.status}, turnExecuting=${this.turnExecuting}`)
-      if (this.state.game.status !== 'active') {
-        this.stop()
-        return
-      }
-      // Skip if previous turn is still executing
-      if (this.turnExecuting) {
-        console.log('Previous turn still executing, skipping...')
-        return
-      }
-      const gen = this.generation
-      this.turnExecuting = true
-      try {
-        await this.executeTurn()
-      } catch (err) {
-        if (err instanceof StaleTurnError) console.log(err.message)
-        else console.error('Turn error:', err)
-      } finally {
-        // A turn from a previous game must not clear the flag for the new game's turn.
-        if (gen === this.generation) this.turnExecuting = false
-      }
-    }, intervalMs)
+    this.addChat('command', 'gm', 'The Arbiter', `WAR GAMES INITIATED (seed ${this.seed}). Three factions claim their territories across the globe...`)
   }
 
-  stop() {
-    this.running = false
+  private schedule() {
+    this.clearTimer()
+    this.turnInterval = setInterval(() => void this.tick(), this.intervalMs)
+  }
+
+  private clearTimer() {
     if (this.turnInterval) {
       clearInterval(this.turnInterval)
       this.turnInterval = null
     }
+  }
+
+  /** Run one turn if the game is live and no turn is in flight; stops the game once it finishes. */
+  private async tick() {
+    if (this.state.game.status !== 'active') {
+      this.stop()
+      return
+    }
+    if (this.turnExecuting) {
+      console.log('Previous turn still executing, skipping...')
+      return
+    }
+    const gen = this.generation
+    this.turnExecuting = true
+    try {
+      await this.executeTurn()
+    } catch (err) {
+      if (err instanceof StaleTurnError) console.log(err.message)
+      else console.error('Turn error:', err)
+    } finally {
+      // A turn from a previous game must not clear the flag for the new game's turn.
+      if (gen === this.generation) {
+        this.turnExecuting = false
+        if (this.state.game.status !== 'active') this.stop()
+      }
+    }
+  }
+
+  /** Suspend the turn timer; the game, and any turn already in flight, carry on. */
+  pause() {
+    if (!this.running || this.paused) return
+    this.paused = true
+    this.clearTimer()
+  }
+
+  /** Resume a paused game: the next turn starts now, then every interval. */
+  resume() {
+    if (!this.running || !this.paused) return
+    this.paused = false
+    this.schedule()
+    void this.tick()
+  }
+
+  /**
+   * Play exactly one turn and stay paused. Starts a fresh game first if none is
+   * running. Returns false (and does nothing) while a turn is still in flight.
+   */
+  step(): boolean {
+    if (this.turnExecuting) return false
+    if (!this.running) this.begin(this.intervalMs)
+    this.pause()
+    void this.tick()
+    return true
+  }
+
+  /** Change the turn interval; takes effect immediately for a running game. */
+  setIntervalMs(ms: number) {
+    this.intervalMs = ms
+    if (this.running && !this.paused) this.schedule()
+  }
+
+  control() {
+    return { running: this.running, paused: this.paused, turnExecuting: this.turnExecuting, intervalMs: this.intervalMs }
+  }
+
+  usageSnapshot(): UsageSnapshot {
+    return this.usage.snapshot()
+  }
+
+  stop() {
+    this.running = false
+    this.paused = false
+    this.clearTimer()
   }
 
   private addChat(channel: ChatMessage['channel'], agent: string, agentName: string, message: string) {
@@ -179,6 +269,7 @@ export class GameEngine {
         owner: territory.owner,
         fortified: territory.fortified,
         mercenaries: territory.mercenaries || 0,
+        ...(territory.fallout ? { falloutClearsOnTurn: territory.fallout.until } : {}),
         units: unitsHere,
         adjacent: this.state.map.adjacency[tId]
       }
@@ -240,6 +331,7 @@ export class GameEngine {
         .filter(([fid]) => fid !== factionId)
         .map(([fid, f]) => [fid, { territoryCount: f.territoryCount, alliances: f.alliances, oathbreaker: f.oathbreaker || false }])),
       yourLastReasoning: lastTurn?.orders[factionId]?.reasoning,
+      yourNotes: this.notes[factionId],
       victoryConditions: this.state.victoryConditions,
       recentEvents: this.turnHistory.slice(-3).flatMap(t => t.events
         .filter(e => e.faction === factionId || PUBLIC_EVENTS.has(e.type) || e.details?.to === factionId)
@@ -354,6 +446,16 @@ export class GameEngine {
       delete this.surpriseAttackBonus[fid]
     }
     this.actedUnits.clear()
+    this.turnMessages = []
+    // Fallout lifts: the yield a strike wiped comes back to whoever holds the land
+    for (const [tId, t] of Object.entries(this.state.map.territories)) {
+      if (t.fallout && turn >= t.fallout.until) {
+        t.resources = t.fallout.resources
+        delete t.fallout
+        this.addChat('command', 'gm', 'The Arbiter', `Fallout clears over ${t.name}: its resources are usable again.`)
+        console.log(`[turn ${turn}] fallout cleared at ${tId}`)
+      }
+    }
     // Last turn's spy reports become this turn's vision
     this.intel = this.pendingIntel
     this.pendingIntel = {}
@@ -422,8 +524,11 @@ export class GameEngine {
     const orderPromises = Object.keys(this.state.factions).map(async (factionId) => {
       const briefing = this.buildBriefing(factionId)
       console.log(`[turn ${turn}] Calling getFactionOrders for ${factionId}...`)
-      const orders = await getFactionOrders(factionId, personas[factionId], briefing)
+      const orders = await getFactionOrders(factionId, personas[factionId], briefing, u => {
+        if (gen === this.generation) this.usage.record(factionId, u)
+      })
       if (gen !== this.generation) return
+      if (orders.notes) this.notes[factionId] = orders.notes
       console.log(`[turn ${turn}] Got orders for ${factionId}: ${orders.orders.length} orders`)
       allOrders[factionId] = orders
 
@@ -490,10 +595,9 @@ export class GameEngine {
     this.addChat('command', 'gm', 'The Arbiter', eventSummary || 'A quiet turn — no significant events.')
 
     // Get narrative
-    const narrative = await getNarrative(
-      `Turn ${turn}. Events: ${eventSummary}. ` +
-      Object.values(this.state.factions).map(f => `${f.name}: ${f.territoryCount} territories, ${f.resources.gold}g`).join('. ')
-    )
+    const narrative = await getNarrative(this.narratorBrief(turn, events), u => {
+      if (gen === this.generation) this.usage.record('narrator', u)
+    })
     if (gen !== this.generation) throw new StaleTurnError(turn)
     this.addChat('observer', 'narrator', 'The Chronicler', narrative)
 
@@ -510,6 +614,33 @@ export class GameEngine {
     this.turnHistory.push(turnResult)
 
     return turnResult
+  }
+
+  /** What the narrator is told about a turn: public events and statements only, never private reasoning or notes. */
+  private narratorBrief(turn: number, events: GameEvent[]): string {
+    const happened = events.filter(e => e.type !== 'invalid' && e.type !== 'message').map(e => e.description)
+    const lines = [`Turn ${turn} of ${this.state.game.maxTurns}.`, `Events: ${happened.join('. ') || 'a quiet turn, nothing of note'}.`]
+    if (this.turnMessages.length) {
+      lines.push('Public statements: ' + this.turnMessages.map(m => `${this.state.factions[m.from].name} said "${m.text}"`).join(' | '))
+    }
+    lines.push('Standings: ' + Object.values(this.state.factions).map(f => {
+      const allies = f.alliances.map(a => this.state.factions[a].name).join(' and ')
+      return `${f.name} - ${f.territoryCount} territories, ${f.resources.gold} gold, ${f.nukes || 0} warheads` + (allies ? `, allied with ${allies}` : '')
+    }).join('; '))
+    const previous = this.turnHistory.at(-1)?.narrative
+    if (previous) lines.push(`Previous bulletin (continue the story, do not repeat it): ${previous}`)
+    return lines.join('\n')
+  }
+
+  /** A nuclear strike: fortification and owner are lost and the yield is wiped for FALLOUT_TURNS turns. */
+  private irradiate(tId: string) {
+    const t = this.state.map.territories[tId]
+    t.fortified = false
+    t.owner = null
+    // A second strike on contaminated land extends the fallout but keeps the original yield
+    const original = t.fallout?.resources ?? { ...t.resources }
+    t.fallout = { until: this.state.game.turn + FALLOUT_TURNS + 1, resources: original }
+    t.resources = {}
   }
 
   private resolveOrder(factionId: string, order: Order): GameEvent | null {
@@ -786,15 +917,9 @@ export class GameEngine {
           f.units = f.units.filter(u => u.territory !== targetTId)
         }
 
-        // Remove fortification and set territory to irradiated (no owner, no resources for 5 turns)
-        targetTerritory.fortified = false
-        targetTerritory.owner = null
-        // Saved but never restored - see TODO.md ("irradiated for 5 turns")
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const originalResources = { ...targetTerritory.resources }
-        targetTerritory.resources = {}
+        this.irradiate(targetTId)
 
-        this.addChat('command', 'gm', 'The Arbiter', `NUCLEAR STRIKE: ${fName} launches a nuclear warhead at ${tName}! All units destroyed. Territory irradiated.`)
+        this.addChat('command', 'gm', 'The Arbiter', `NUCLEAR STRIKE: ${fName} launches a nuclear warhead at ${tName}! All units destroyed. Territory irradiated for ${FALLOUT_TURNS} turns.`)
         this.addChat('diplomacy', factionId, fName, `We have unleashed nuclear fire upon ${tName}. Let this be a warning.`)
 
         // Second Strike retaliation check
@@ -805,15 +930,13 @@ export class GameEngine {
             const attackerTerritories = Object.entries(this.state.map.territories)
               .filter(([_, t]) => t.owner === factionId)
             if (attackerTerritories.length > 0) {
-              const [retaliationTId, retaliationTerritory] = attackerTerritories[Math.floor(Math.random() * attackerTerritories.length)]
+              const [retaliationTId, retaliationTerritory] = attackerTerritories[Math.floor(this.rng() * attackerTerritories.length)]
               defender.nukes--
               // Destroy units in retaliation territory
               for (const f of Object.values(this.state.factions)) {
                 f.units = f.units.filter(u => u.territory !== retaliationTId)
               }
-              retaliationTerritory.fortified = false
-              retaliationTerritory.owner = null
-              retaliationTerritory.resources = {}
+              this.irradiate(retaliationTId)
               this.addChat('command', 'gm', 'The Arbiter', `SECOND STRIKE: ${defender.name} retaliates with a nuclear strike on ${retaliationTerritory.name}!`)
             }
           }
@@ -861,6 +984,7 @@ export class GameEngine {
         const direct = order.to && order.to !== factionId && this.state.factions[order.to] ? order.to : null
         const recipients = direct ? [direct] : Object.keys(this.state.factions).filter(f => f !== factionId)
         for (const r of recipients) this.notify(r, factionId, 'message', text)
+        if (!direct) this.turnMessages.push({ from: factionId, text })
         this.addChat('diplomacy', factionId, fName, direct ? `(to ${this.state.factions[direct].name}) ${text}` : text)
         return { type: 'message', faction: factionId, description: `${fName} sends a diplomatic message`, details: direct ? { to: direct } : undefined }
       }
@@ -938,7 +1062,7 @@ export class GameEngine {
     const veteranDefBonus = (defenderFaction.tech.military >= 3 && defenderUnit.xp > 0) ? 1 : 0
     const defendStrength = dStats.defense + terrainBonus + fortBonus + (defenderFaction.tech.military >= 3 ? 1 : 0) + veteranDefBonus + xpBonus(defenderUnit)
 
-    const roll = Math.floor(Math.random() * 6) + 1 + (attackStrength - defendStrength)
+    const roll = Math.floor(this.rng() * 6) + 1 + (attackStrength - defendStrength)
 
     if (roll >= 7) {
       defenderUnit.hp -= 2
@@ -989,7 +1113,7 @@ export class GameEngine {
     const mercDefense = UNIT_STATS.infantry.defense + terrainBonus
     const attackStrength = aStats.attack + (attackerFaction.tech.military >= 3 ? 1 : 0) + xpBonus + surpriseBonus
 
-    const roll = Math.floor(Math.random() * 6) + 1 + (attackStrength - mercDefense)
+    const roll = Math.floor(this.rng() * 6) + 1 + (attackStrength - mercDefense)
 
     if (roll >= 5) {
       // Attacker wins — clear mercenaries, capture territory

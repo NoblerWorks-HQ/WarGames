@@ -23,10 +23,22 @@
           <div class="stat-label">Elapsed</div>
           <div class="stat-value" id="elapsed">0:00</div>
         </div>
+        <div class="stat" id="cost-stat" title="Estimated API spend this game">
+          <div class="stat-label">Cost</div>
+          <div class="stat-value" id="cost-total">-</div>
+        </div>
       </div>
       <div class="controls">
+        <label class="speed" title="Seconds between turns">
+          <span class="speed-label">Turn every <span id="speed-value">15s</span></span>
+          <input type="range" id="speed" min="5" max="60" step="5" value="15" aria-label="Seconds between turns">
+        </label>
         <button class="btn btn-start" id="btn-start">START</button>
+        <button class="btn btn-pause hidden" id="btn-pause">PAUSE</button>
+        <button class="btn btn-start hidden" id="btn-resume">RESUME</button>
+        <button class="btn" id="btn-step" title="Play one turn, then pause">STEP</button>
         <button class="btn btn-stop hidden" id="btn-stop">STOP</button>
+        <button class="btn" id="btn-warroom" title="What each leader says in public versus thinks in private">WAR ROOM</button>
         <button class="btn btn-reset" id="btn-reset">RESET</button>
       </div>
     </div>
@@ -74,6 +86,7 @@
           </div>
         </div>
         <div class="faction-allies">Allies: <span class="f-allies">None</span></div>
+        <div class="faction-ai"><span class="f-ai">-</span><span class="f-cost"></span></div>
       </div>
 
       <!-- Russia -->
@@ -104,6 +117,7 @@
           </div>
         </div>
         <div class="faction-allies">Allies: <span class="f-allies">None</span></div>
+        <div class="faction-ai"><span class="f-ai">-</span><span class="f-cost"></span></div>
       </div>
 
       <!-- China -->
@@ -134,6 +148,7 @@
           </div>
         </div>
         <div class="faction-allies">Allies: <span class="f-allies">None</span></div>
+        <div class="faction-ai"><span class="f-ai">-</span><span class="f-cost"></span></div>
       </div>
 
       <!-- Combined chat feed -->
@@ -157,6 +172,13 @@
   <!-- End-of-game summary modal -->
   <div id="game-summary-modal" class="summary-modal hidden">
     <div class="summary-modal-content" id="summary-modal-body">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- War room: public statements vs private reasoning -->
+  <div id="warroom-modal" class="summary-modal hidden">
+    <div class="summary-modal-content warroom-content" id="warroom-body">
       <!-- Populated by JS -->
     </div>
   </div>

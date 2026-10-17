@@ -17,6 +17,12 @@
 import type { GoogleGenerativeAI } from '@google/generative-ai'
 import { httpError, withRetry } from './retry.js'
 
+export interface GenerateResult {
+  text: string
+  inputTokens?: number
+  outputTokens?: number
+}
+
 export interface AIProvider {
   name: string
   /** The model id this provider sends, after env overrides. */
@@ -26,11 +32,18 @@ export interface AIProvider {
   /** Env var holding the API key - named in startup errors. */
   keyEnvVar: string
   generate(prompt: string): Promise<string>
+  /** Like generate(), plus the token counts the provider reported (undefined if it reported none). */
+  generateWithUsage(prompt: string): Promise<GenerateResult>
   /**
    * Ask the provider whether `model` exists. One cheap metadata GET, no tokens
    * spent. Called once at server boot by validateProviders(), never per turn.
    */
   checkModel(): Promise<ModelCheck>
+}
+
+/** Adds generate() to a provider that implements generateWithUsage(). */
+function withGenerate(core: Omit<AIProvider, 'generate'>): AIProvider {
+  return { ...core, generate: async prompt => (await core.generateWithUsage(prompt)).text }
 }
 
 /**
@@ -94,12 +107,12 @@ function createGeminiProvider(): AIProvider {
 
   let client: GoogleGenerativeAI | null = null
 
-  return {
+  return withGenerate({
     name: 'gemini',
     model: modelId,
     modelEnvVar: 'GEMINI_MODEL',
     keyEnvVar: 'GEMINI_API_KEY',
-    async generate(prompt: string): Promise<string> {
+    async generateWithUsage(prompt: string): Promise<GenerateResult> {
       if (!client) {
         const { GoogleGenerativeAI } = await import('@google/generative-ai')
         client = new GoogleGenerativeAI(key)
@@ -116,7 +129,17 @@ function createGeminiProvider(): AIProvider {
       const result = await withRetry('gemini', () =>
         withTimeout(model.generateContent(prompt), 15000, 'gemini')
       )
-      return result.response.text().trim()
+      // Thinking tokens are billed as output but this SDK version doesn't type them
+      // separately, so output = total - prompt (candidates + any thinking).
+      const usage = result.response.usageMetadata
+      return {
+        text: result.response.text().trim(),
+        inputTokens: usage?.promptTokenCount,
+        outputTokens:
+          usage?.totalTokenCount !== undefined && usage.promptTokenCount !== undefined
+            ? usage.totalTokenCount - usage.promptTokenCount
+            : usage?.candidatesTokenCount,
+      }
     },
     checkModel() {
       return fetchModelCheck(
@@ -124,7 +147,7 @@ function createGeminiProvider(): AIProvider {
         { 'x-goog-api-key': key }
       )
     },
-  }
+  })
 }
 
 // --- OpenAI ---
@@ -150,12 +173,12 @@ function createOpenAIProvider(): AIProvider {
       }
     : { max_tokens: 4096, temperature: 0.7 }
 
-  return {
+  return withGenerate({
     name: 'openai',
     model,
     modelEnvVar: 'OPENAI_MODEL',
     keyEnvVar: 'OPENAI_API_KEY',
-    async generate(prompt: string): Promise<string> {
+    async generateWithUsage(prompt: string): Promise<GenerateResult> {
       return withRetry('openai', async () => {
         const res = await withTimeout(
           fetch(`${baseUrl}/chat/completions`, {
@@ -174,8 +197,15 @@ function createOpenAIProvider(): AIProvider {
           'openai'
         )
         if (!res.ok) throw await httpError('OpenAI', res)
-        const data = (await res.json()) as { choices?: { message?: { content?: string } }[] }
-        return (data.choices?.[0]?.message?.content || '').trim()
+        const data = (await res.json()) as {
+          choices?: { message?: { content?: string } }[]
+          usage?: { prompt_tokens?: number; completion_tokens?: number }
+        }
+        return {
+          text: (data.choices?.[0]?.message?.content || '').trim(),
+          inputTokens: data.usage?.prompt_tokens,
+          outputTokens: data.usage?.completion_tokens,
+        }
       })
     },
     async checkModel() {
@@ -189,7 +219,7 @@ function createOpenAIProvider(): AIProvider {
       }
       return result
     },
-  }
+  })
 }
 
 // --- Anthropic ---
@@ -205,12 +235,12 @@ function createAnthropicProvider(): AIProvider {
   // "disabled", so they are left on their default.
   const thinking = /fable|mythos/.test(model) ? {} : { thinking: { type: 'disabled' } }
 
-  return {
+  return withGenerate({
     name: 'anthropic',
     model,
     modelEnvVar: 'ANTHROPIC_MODEL',
     keyEnvVar: 'ANTHROPIC_API_KEY',
-    async generate(prompt: string): Promise<string> {
+    async generateWithUsage(prompt: string): Promise<GenerateResult> {
       return withRetry('anthropic', async () => {
         const res = await withTimeout(
           fetch('https://api.anthropic.com/v1/messages', {
@@ -231,9 +261,16 @@ function createAnthropicProvider(): AIProvider {
           'anthropic'
         )
         if (!res.ok) throw await httpError('Anthropic', res)
-        const data = (await res.json()) as { content?: { type: string; text?: string }[] }
+        const data = (await res.json()) as {
+          content?: { type: string; text?: string }[]
+          usage?: { input_tokens?: number; output_tokens?: number }
+        }
         const textBlock = data.content?.find(b => b.type === 'text')
-        return (textBlock?.text || '').trim()
+        return {
+          text: (textBlock?.text || '').trim(),
+          inputTokens: data.usage?.input_tokens,
+          outputTokens: data.usage?.output_tokens,
+        }
       })
     },
     checkModel() {
@@ -242,7 +279,7 @@ function createAnthropicProvider(): AIProvider {
         'anthropic-version': '2023-06-01',
       })
     },
-  }
+  })
 }
 
 // --- Factory ---

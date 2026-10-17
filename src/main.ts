@@ -1,5 +1,6 @@
 import { FlatMap } from './flatmap.js'
-import type { GameState, ChatMessage, GameEvent } from './types.js'
+import { WarRoom } from './warroom.js'
+import type { GameState, ChatMessage, GameEvent, GameControl, UsageSnapshot } from './types.js'
 import 'leaflet/dist/leaflet.css'
 import './style.css'
 
@@ -41,14 +42,31 @@ class WarGamesApp {
   private startTime: number = 0
   private lastDisplayedTurn = 0
   private gameEndShown = false
+  private control: GameControl = { running: false, paused: false, turnExecuting: false, intervalMs: 15000 }
+  private speedSynced = false
+  private warRoom: WarRoom
 
   constructor() {
     const container = document.getElementById('globe-container')!
     this.map = new FlatMap(container)
+    this.warRoom = new WarRoom(document.getElementById('warroom-modal')!, document.getElementById('warroom-body')!, FACTION_COLORS)
 
     document.getElementById('btn-start')!.addEventListener('click', () => this.startGame())
+    document.getElementById('btn-pause')!.addEventListener('click', () => this.pauseGame())
+    document.getElementById('btn-resume')!.addEventListener('click', () => this.resumeGame())
+    document.getElementById('btn-step')!.addEventListener('click', () => this.stepGame())
     document.getElementById('btn-stop')!.addEventListener('click', () => this.stopGame())
     document.getElementById('btn-reset')!.addEventListener('click', () => this.resetGame())
+    document.getElementById('btn-warroom')!.addEventListener('click', () => {
+      if (this.state) this.warRoom.open(this.chatMessages, this.state)
+    })
+
+    const speed = document.getElementById('speed') as HTMLInputElement
+    speed.addEventListener('input', () => {
+      document.getElementById('speed-value')!.textContent = `${speed.value}s`
+    })
+    // Applies at once to a running game; a stopped one just remembers it
+    speed.addEventListener('change', () => this.post('/api/interval', { intervalMs: this.speedMs() }))
 
     // Dismiss game summary modal on backdrop click
     document.getElementById('game-summary-modal')!.addEventListener('click', (e) => {
@@ -70,13 +88,16 @@ class WarGamesApp {
     }
   }
 
-  private async startGame() {
-    this.startTime = Date.now()
-    await fetch('/api/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ intervalMs: 15000 }) })
-    this.startPolling()
-    this.timerInterval = setInterval(() => this.updateElapsed(), 1000)
-    document.getElementById('btn-start')!.classList.add('hidden')
-    document.getElementById('btn-stop')!.classList.remove('hidden')
+  private speedMs(): number {
+    return Number((document.getElementById('speed') as HTMLInputElement).value) * 1000
+  }
+
+  private post(path: string, body?: unknown): Promise<Response> {
+    return fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body)
+    })
   }
 
   private stopTimer() {
@@ -86,16 +107,8 @@ class WarGamesApp {
     }
   }
 
-  private async stopGame() {
-    await fetch('/api/stop', { method: 'POST' })
-    this.stopPolling()
-    this.stopTimer()
-    document.getElementById('btn-stop')!.classList.add('hidden')
-    document.getElementById('btn-start')!.classList.remove('hidden')
-  }
-
-  private async resetGame() {
-    await fetch('/api/reset', { method: 'POST' })
+  /** A new game is about to begin on the server: drop everything shown from the last one. */
+  private clearLocal() {
     this.stopPolling()
     this.stopTimer()
     this.startTime = 0
@@ -104,16 +117,51 @@ class WarGamesApp {
     this.lastDisplayedTurn = 0
     this.gameEndShown = false
     this.map.reset()
+    this.warRoom.reset()
     document.getElementById('game-summary-modal')!.classList.add('hidden')
     document.getElementById('capture-toasts')!.innerHTML = ''
     document.getElementById('elapsed')!.textContent = '0:00'
     this.renderChat()
+  }
+
+  private async startGame() {
+    if (!this.control.running) this.clearLocal()
+    await this.post('/api/start', { intervalMs: this.speedMs() })
     await this.fetchState()
-    document.getElementById('btn-stop')!.classList.add('hidden')
-    document.getElementById('btn-start')!.classList.remove('hidden')
+  }
+
+  private async pauseGame() {
+    await this.post('/api/pause')
+    await this.fetchState()
+  }
+
+  private async resumeGame() {
+    await this.post('/api/resume')
+    await this.fetchState()
+  }
+
+  /** Play one turn and stay paused; starts a fresh game if none is running. */
+  private async stepGame() {
+    if (!this.control.running) this.clearLocal()
+    const res = await this.post('/api/step')
+    if (res.ok) await this.fetchState()
+  }
+
+  private async stopGame() {
+    await this.post('/api/stop')
+    this.stopPolling()
+    this.stopTimer()
+    await this.fetchState()
+  }
+
+  private async resetGame() {
+    await this.post('/api/reset')
+    this.clearLocal()
+    await this.fetchState()
   }
 
   private startPolling() {
+    if (this.pollInterval) return
     this.pollInterval = setInterval(() => {
       this.fetchState()
       this.fetchChat()
@@ -124,6 +172,70 @@ class WarGamesApp {
     if (this.pollInterval) {
       clearInterval(this.pollInterval)
       this.pollInterval = null
+    }
+  }
+
+  private toggle(id: string, visible: boolean) {
+    document.getElementById(id)!.classList.toggle('hidden', !visible)
+  }
+
+  /** Buttons, speed slider and polling all follow what the server says it is doing. */
+  private syncControls() {
+    const { running, paused, turnExecuting, intervalMs } = this.control
+    this.toggle('btn-start', !running)
+    this.toggle('btn-pause', running && !paused)
+    this.toggle('btn-resume', running && paused)
+    this.toggle('btn-stop', running)
+    ;(document.getElementById('btn-step') as HTMLButtonElement).disabled = turnExecuting
+    if (!this.speedSynced) {
+      this.speedSynced = true
+      ;(document.getElementById('speed') as HTMLInputElement).value = String(Math.round(intervalMs / 1000))
+      document.getElementById('speed-value')!.textContent = `${Math.round(intervalMs / 1000)}s`
+    }
+    if (running) {
+      this.startPolling()
+      if (!this.timerInterval) {
+        this.startTime = Date.parse(this.state?.game.startedAt ?? '') || Date.now()
+        this.timerInterval = setInterval(() => this.updateElapsed(), 1000)
+      }
+    }
+  }
+
+  private formatCost(usd: number, complete: boolean): string {
+    const text = usd < 0.01 ? `$${usd.toFixed(4)}` : `$${usd.toFixed(2)}`
+    return complete ? text : `\u2265${text}`
+  }
+
+  private formatTokens(n: number): string {
+    return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+  }
+
+  private renderUsage(usage: UsageSnapshot | undefined) {
+    const costEl = document.getElementById('cost-total')!
+    if (!usage || usage.total.calls === 0) {
+      costEl.textContent = '-'
+      document.getElementById('cost-stat')!.title = 'Estimated API spend this game'
+    } else {
+      const t = usage.total
+      costEl.textContent = t.costUsd > 0 || t.costComplete ? this.formatCost(t.costUsd, t.costComplete) : 'n/a'
+      const n = usage.roles.narrator
+      document.getElementById('cost-stat')!.title =
+        `${t.calls} AI calls, ${this.formatTokens(t.inputTokens)} in / ${this.formatTokens(t.outputTokens)} out tokens` +
+        (t.costComplete ? '' : ' (some models have no known price: this is a lower bound)') +
+        (n ? `\nNarrator: ${n.provider} ${n.model}, ${this.formatCost(n.costUsd, n.costComplete)}` : '')
+    }
+    for (const fid of ['nato', 'russia', 'china']) {
+      const panel = document.getElementById(`faction-${fid}`)
+      if (!panel) continue
+      const r = usage?.roles[fid]
+      if (!r) {
+        panel.querySelector('.f-ai')!.textContent = '-'
+        panel.querySelector('.f-cost')!.textContent = ''
+        continue
+      }
+      panel.querySelector('.f-ai')!.textContent = `${r.provider} \u00b7 ${r.model}`
+      panel.querySelector('.f-cost')!.textContent =
+        `${r.costUsd > 0 || r.costComplete ? this.formatCost(r.costUsd, r.costComplete) : 'n/a'} \u00b7 ${this.formatTokens(r.inputTokens + r.outputTokens)} tok`
     }
   }
 
@@ -167,6 +279,10 @@ class WarGamesApp {
     // Render map
     this.map.render(this.state)
 
+    this.control = this.state.control ?? this.control
+    this.syncControls()
+    this.renderUsage(this.state.usage)
+
     // Update turn counter
     const turnEl = document.getElementById('turn-counter')!
     turnEl.textContent = `TURN ${this.state.game.turn} / ${this.state.game.maxTurns}`
@@ -178,6 +294,7 @@ class WarGamesApp {
       statusEl.textContent = `VICTORY: ${victorName}`
       statusEl.style.color = this.state.game.victor ? FACTION_COLORS[this.state.game.victor] : '#fff'
       this.stopPolling()
+      this.stopTimer()
       this.map.stopCamera()
       if (!this.gameEndShown) {
         this.gameEndShown = true
@@ -194,8 +311,9 @@ class WarGamesApp {
         })
       }
     } else {
-      statusEl.textContent = this.state.game.status === 'active' ? 'ACTIVE' : 'WAITING'
-      statusEl.style.color = '#4caf50'
+      const paused = this.control.running && this.control.paused
+      statusEl.textContent = paused ? 'PAUSED' : this.state.game.status === 'active' ? 'ACTIVE' : 'WAITING'
+      statusEl.style.color = paused ? '#f39c12' : '#4caf50'
     }
 
     this.updateElapsed()
@@ -204,6 +322,7 @@ class WarGamesApp {
     if (this.state.game.turn > this.lastDisplayedTurn && this.state.game.turn > 0) {
       this.lastDisplayedTurn = this.state.game.turn
       this.showTurnBriefing(this.state)
+      if (this.warRoom.isOpen) this.warRoom.refresh(this.chatMessages, this.state)
     }
 
     // Update faction panels
@@ -276,6 +395,7 @@ class WarGamesApp {
       const sourceTag = isDiplo ? '<span class="feed-source diplo">DIPLO</span>' : isNews ? '<span class="feed-source news">NEWS</span>' : ''
       html += `<div class="chat-msg">${sourceTag}<span class="chat-agent" style="color:${color}">[${msg.agentName}]</span> <span class="chat-text">${renderMarkdown(msg.message)}</span></div>`
     }
+    if (this.warRoom.isOpen) this.warRoom.update(this.chatMessages)
     feedEl.innerHTML = html || '<div class="chat-msg chat-empty">Awaiting intelligence...</div>'
     feedEl.scrollTop = feedEl.scrollHeight
 
@@ -334,7 +454,7 @@ class WarGamesApp {
       <div class="summary-header">
         <div class="summary-title">GAME OVER</div>
         <div class="summary-victor" style="color:${victorColor}">${victorName} wins</div>
-        <div class="summary-subtitle">Turn ${this.state.game.turn} / ${this.state.game.maxTurns}</div>
+        <div class="summary-subtitle">Turn ${this.state.game.turn} / ${this.state.game.maxTurns}${this.state.game.seed !== undefined ? ` &middot; seed ${this.state.game.seed}` : ''}${this.state.usage?.total.calls ? ` &middot; ${this.formatCost(this.state.usage.total.costUsd, this.state.usage.total.costComplete)}` : ''}</div>
       </div>
       <div class="summary-section">
         <div class="summary-section-title">FINAL STANDINGS</div>

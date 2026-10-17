@@ -6,6 +6,7 @@ import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { GameEngine } from './engine.js'
 import { clampInterval, isAllowedOrigin } from './http.js'
+import { parseSeed } from './rng.js'
 
 // Validate AI provider on startup
 import { validateProviders, logProviderConfig } from './ai-provider.js'
@@ -41,11 +42,14 @@ app.use((req, res, next) => {
 app.use(cors({ origin: (origin, cb) => cb(null, isAllowedOrigin(origin)) }))
 app.use(express.json())
 
-const engine = new GameEngine()
+// SEED=<number or any text> makes every game roll the same dice, so a game can be replayed.
+const seed = parseSeed(process.env.SEED)
+if (seed !== undefined) console.log(`Dice seeded with ${seed} (SEED=${process.env.SEED})`)
+const engine = new GameEngine({ seed })
 
 // Get current game state
 app.get('/api/state', (_req, res) => {
-  res.json({ ...engine.state, recentEvents: engine.recentEvents })
+  res.json({ ...engine.state, recentEvents: engine.recentEvents, control: engine.control(), usage: engine.usageSnapshot() })
 })
 
 // Get chat log (index-based to avoid duplicates)
@@ -71,6 +75,33 @@ app.post('/api/start', (req, res) => {
   engine.start(intervalMs)
   console.log(`>>> Game started, running=${engine.running}`)
   res.json({ status: 'started', intervalMs })
+})
+
+// Pause between turns (a turn already in flight still finishes)
+app.post('/api/pause', (_req, res) => {
+  engine.pause()
+  res.json({ status: 'paused', ...engine.control() })
+})
+
+// Resume a paused game: the next turn starts immediately
+app.post('/api/resume', (_req, res) => {
+  engine.resume()
+  res.json({ status: 'resumed', ...engine.control() })
+})
+
+// Play exactly one turn, then stay paused. Starts a new game if none is running.
+app.post('/api/step', (_req, res) => {
+  if (!engine.step()) {
+    res.status(409).json({ error: 'a turn is already in progress' })
+    return
+  }
+  res.json({ status: 'stepping', ...engine.control() })
+})
+
+// Change the turn speed; takes effect immediately
+app.post('/api/interval', (req, res) => {
+  engine.setIntervalMs(clampInterval(req.body?.intervalMs))
+  res.json({ status: 'ok', ...engine.control() })
 })
 
 // Stop game
@@ -100,6 +131,10 @@ app.listen(PORT, HOST, () => {
   console.log('  GET  /api/chat   - Chat log')
   console.log('  GET  /api/turns  - Turn history')
   console.log('  POST /api/start  - Start game')
+  console.log('  POST /api/pause  - Pause between turns')
+  console.log('  POST /api/resume - Resume a paused game')
+  console.log('  POST /api/step   - Play one turn, then pause')
+  console.log('  POST /api/interval - Change turn speed')
   console.log('  POST /api/stop   - Stop game')
   console.log('  POST /api/reset  - Reset game')
 })
