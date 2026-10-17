@@ -67,7 +67,7 @@ describe('openai', () => {
 })
 
 describe('anthropic', () => {
-  const ask = async (env: string, schema?: object, reply?: unknown) => {
+  const ask = async (env: string, schema?: Record<string, unknown>, reply?: unknown) => {
     vi.stubEnv('STRUCTURED_OUTPUT', env)
     vi.stubEnv('AI_PROVIDER', 'anthropic')
     replyJson = reply ?? { content: [{ type: 'text', text: 'plain text' }], usage: { input_tokens: 3, output_tokens: 4 } }
