@@ -8,6 +8,13 @@ project, the game is the harness for it. Last commit 2026-08-31.
 
 ---
 
+## Phase 2 (2026-10-18)
+
+- [x] 2026-10-18 Save/load: autosave after every turn to `games/<id>.json`, `/api/games`, `/api/load`, Load dropdown. A restored game replays exactly like the original (test compares full state after a further turn, dice position included).
+- [x] 2026-10-18 Scorecard: `server/scorecard.ts`, `/api/scorecard`, table in the game-over summary, stored in each save.
+- [ ] Mirror scenario, native structured output, tournament mode (next).
+- [ ] Load does not restore the elapsed timer or chat animations; saves from older engine versions are rejected (version 1 only).
+
 ## Phase 1 features (2026-10-18)
 
 Built on branch `gameplay-fixes`; 92 tests. Exercised end to end against a fake OpenAI-compatible server and a headless browser, **not** against the real providers.

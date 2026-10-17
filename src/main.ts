@@ -1,6 +1,6 @@
 import { FlatMap } from './flatmap.js'
 import { WarRoom } from './warroom.js'
-import type { GameState, ChatMessage, GameEvent, GameControl, UsageSnapshot } from './types.js'
+import type { GameState, ChatMessage, GameEvent, GameControl, UsageSnapshot, SaveSummary, Scorecard } from './types.js'
 import 'leaflet/dist/leaflet.css'
 import './style.css'
 
@@ -57,6 +57,14 @@ class WarGamesApp {
     document.getElementById('btn-step')!.addEventListener('click', () => this.stepGame())
     document.getElementById('btn-stop')!.addEventListener('click', () => this.stopGame())
     document.getElementById('btn-reset')!.addEventListener('click', () => this.resetGame())
+    const loadSelect = document.getElementById('load-select') as HTMLSelectElement
+    loadSelect.addEventListener('mousedown', () => void this.refreshSaves())
+    loadSelect.addEventListener('focus', () => void this.refreshSaves())
+    loadSelect.addEventListener('change', () => {
+      const id = loadSelect.value
+      loadSelect.value = ''
+      if (id) void this.loadGame(id)
+    })
     document.getElementById('btn-warroom')!.addEventListener('click', () => {
       if (this.state) this.warRoom.open(this.chatMessages, this.state)
     })
@@ -152,6 +160,33 @@ class WarGamesApp {
     this.stopPolling()
     this.stopTimer()
     await this.fetchState()
+  }
+
+  /** Fill the Load dropdown from the server's saved games (text nodes only: ids come from disk). */
+  private async refreshSaves() {
+    const select = document.getElementById('load-select') as HTMLSelectElement
+    try {
+      const saves: SaveSummary[] = await (await fetch('/api/games')).json()
+      if (!saves.length && select.options.length > 1) return
+      select.length = 1
+      for (const g of saves) {
+        const who = g.status === 'finished' ? (g.victor ?? 'draw') + ' won' : 'in progress'
+        const opt = new Option(`T${g.turn}/${g.maxTurns} ${who} · seed ${g.seed} · ${g.savedAt.slice(0, 16).replace('T', ' ')}`, g.id)
+        opt.title = Object.entries(g.models).map(([f, m]) => `${f}: ${m}`).join('\n')
+        select.add(opt)
+      }
+    } catch (err) {
+      console.error('Failed to list saved games:', err)
+    }
+  }
+
+  /** Replace the current game with a saved one; an unfinished game comes back paused. */
+  private async loadGame(id: string) {
+    this.clearLocal()
+    const res = await this.post('/api/load', { id })
+    if (!res.ok) console.error('Load failed:', await res.text())
+    await this.fetchState()
+    await this.fetchChat()
   }
 
   private async resetGame() {
@@ -461,6 +496,10 @@ class WarGamesApp {
         ${scoresHtml}
       </div>
       <div class="summary-section">
+        <div class="summary-section-title">SCORECARD</div>
+        <div id="summary-scorecard" style="color:var(--text-muted)">Loading...</div>
+      </div>
+      <div class="summary-section">
         <div class="summary-section-title">KEY MOMENTS</div>
         <div class="summary-timeline">${timelineHtml || '<div style="color:var(--text-muted)">No recaps recorded.</div>'}</div>
       </div>
@@ -479,6 +518,37 @@ class WarGamesApp {
     })
 
     modal.classList.remove('hidden')
+    void this.fillScorecard(document.getElementById('summary-scorecard')!)
+  }
+
+  /** Per-seat results: which model played each seat, how it did and what it cost. Text nodes only. */
+  private async fillScorecard(host: HTMLElement) {
+    try {
+      const card: Scorecard = await (await fetch('/api/scorecard')).json()
+      const table = document.createElement('table')
+      table.className = 'scorecard'
+      const head = table.createTHead().insertRow()
+      for (const h of ['Seat / model', 'Rank', 'Score', 'Valid orders', 'Latency', 'Cost']) {
+        const th = document.createElement('th')
+        th.textContent = h
+        head.appendChild(th)
+      }
+      const body = table.createTBody()
+      for (const r of card.rows) {
+        const tr = body.insertRow()
+        const first = tr.insertCell()
+        first.textContent = `${this.state?.factions[r.faction]?.name ?? r.faction}${r.provider ? ` - ${r.provider} ${r.model}` : ''}`
+        first.style.color = FACTION_COLORS[r.faction] ?? ''
+        tr.insertCell().textContent = `${r.rank}${r.won ? ' (won)' : ''}`
+        tr.insertCell().textContent = String(r.score)
+        tr.insertCell().textContent = r.validRate === null ? '-' : `${Math.round(r.validRate * 100)}% (${r.invalid} bad / ${r.orders})`
+        tr.insertCell().textContent = r.avgLatencyMs === null ? '-' : `${(r.avgLatencyMs / 1000).toFixed(1)}s`
+        tr.insertCell().textContent = r.calls ? this.formatCost(r.costUsd, r.costComplete) : '-'
+      }
+      host.replaceChildren(table)
+    } catch {
+      host.textContent = 'Scorecard unavailable.'
+    }
   }
 
   private showFullDetails(container: HTMLElement) {

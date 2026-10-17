@@ -4,8 +4,33 @@ import { fileURLToPath } from 'url'
 import type { GameState, Unit, Order, FactionOrders, TurnResult, GameEvent, ChatMessage } from './types.js'
 import { getFactionOrders, getNarrative } from './ai.js'
 import { mulberry32, randomSeed } from './rng.js'
+import type { SeededRng } from './rng.js'
 import { UsageTracker } from './usage.js'
 import type { UsageSnapshot } from './usage.js'
+
+/** Everything needed to put a game back exactly where it was. */
+export interface SavedGame {
+  version: 1
+  id: string
+  savedAt: string
+  state: GameState
+  turnHistory: TurnResult[]
+  chatLog: ChatMessage[]
+  recentEvents: GameEvent[]
+  pendingAlliances: [string, number][]
+  allianceSince: [string, number][]
+  inbox: Record<string, InboxItem[]>
+  pendingIntel: Record<string, string[]>
+  intel: Record<string, string[]>
+  unitSerial: Record<string, number>
+  surpriseAttackBonus: Record<string, number>
+  notes: Record<string, string>
+  usage: UsageSnapshot['roles']
+  seed: number
+  /** Position in the dice stream; null if the dice were replaced (tests). */
+  rngState: number | null
+  intervalMs: number
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -90,6 +115,10 @@ export class GameEngine {
   /** Source of every die roll; seeded so a game can be replayed. Tests may replace it. */
   rng: () => number
   seed: number
+  /** Names the save file; set when a game begins. */
+  gameId = ''
+  /** Called after every finished turn (the server autosaves here). */
+  onTurnComplete?: () => void
   private fixedSeed: number | undefined
   running = false
   /** True while a started game is suspended between turns (pause/step). */
@@ -132,6 +161,7 @@ export class GameEngine {
     this.rng = mulberry32(this.seed)
     this.state.game.seed = this.seed
     this.state.game.startedAt = new Date().toISOString()
+    this.gameId = `${this.state.game.startedAt.replace(/[:.]/g, '-')}-s${this.seed}`
     this.state.game.turn = 0
     this.state.game.status = 'active'
     this.state.game.victor = null
@@ -226,6 +256,71 @@ export class GameEngine {
 
   control() {
     return { running: this.running, paused: this.paused, turnExecuting: this.turnExecuting, intervalMs: this.intervalMs }
+  }
+
+  /** A deep copy of the whole game, safe to write to disk. */
+  snapshot(): SavedGame {
+    const sets = (r: Record<string, Set<string>>) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, [...v]]))
+    return structuredClone({
+      version: 1 as const,
+      id: this.gameId,
+      savedAt: new Date().toISOString(),
+      state: this.state,
+      turnHistory: this.turnHistory,
+      chatLog: this.chatLog,
+      recentEvents: this.recentEvents,
+      pendingAlliances: [...this.pendingAlliances],
+      allianceSince: [...this.allianceSince],
+      inbox: this.inbox,
+      pendingIntel: sets(this.pendingIntel),
+      intel: sets(this.intel),
+      unitSerial: this.unitSerial,
+      surpriseAttackBonus: this.surpriseAttackBonus,
+      notes: this.notes,
+      usage: this.usage.snapshot().roles,
+      seed: this.seed,
+      rngState: 'getState' in this.rng ? (this.rng as SeededRng).getState() : null,
+      intervalMs: this.intervalMs,
+    })
+  }
+
+  /**
+   * Replace the current game with a saved one. A turn in flight is discarded. An unfinished
+   * game comes back paused, so nothing spends money until the user resumes or steps it.
+   */
+  restore(saved: SavedGame) {
+    if (saved.version !== 1) throw new Error(`Unsupported save version ${saved.version}`)
+    const g = structuredClone(saved)
+    this.stop()
+    this.generation++
+    this.turnExecuting = false
+    this.state = g.state
+    this.turnHistory = g.turnHistory
+    this.chatLog = g.chatLog
+    this.recentEvents = g.recentEvents
+    this.pendingAlliances = new Map(g.pendingAlliances)
+    this.allianceSince = new Map(g.allianceSince)
+    this.inbox = g.inbox
+    const sets = (r: Record<string, string[]>) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, new Set(v)]))
+    this.pendingIntel = sets(g.pendingIntel)
+    this.intel = sets(g.intel)
+    this.actedUnits = new Set()
+    this.unitSerial = g.unitSerial
+    this.surpriseAttackBonus = g.surpriseAttackBonus
+    this.notes = g.notes
+    this.turnMessages = []
+    this.usage = new UsageTracker()
+    this.usage.restore(g.usage)
+    this.seed = g.seed
+    const rng = mulberry32(g.seed)
+    if (g.rngState !== null) rng.setState(g.rngState)
+    this.rng = rng
+    this.gameId = g.id
+    this.intervalMs = g.intervalMs
+    if (this.state.game.status === 'active') {
+      this.running = true
+      this.paused = true
+    }
   }
 
   usageSnapshot(): UsageSnapshot {
@@ -612,6 +707,11 @@ export class GameEngine {
       narrative
     }
     this.turnHistory.push(turnResult)
+    try {
+      this.onTurnComplete?.()
+    } catch (err) {
+      console.error('Autosave failed:', err)
+    }
 
     return turnResult
   }

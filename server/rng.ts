@@ -1,15 +1,24 @@
 /** Seeded random numbers, so a game's dice can be replayed exactly. */
 
+/** A die source whose position can be saved and restored, so a loaded game keeps rolling the same stream. */
+export type SeededRng = (() => number) & { getState(): number; setState(s: number): void }
+
 /** mulberry32: a tiny, fast PRNG with a 32-bit state. Returns floats in [0, 1) like Math.random. */
-export function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): SeededRng {
   let a = seed >>> 0
-  return () => {
+  const next = () => {
     a = (a + 0x6d2b79f5) >>> 0
     let t = a
     t = Math.imul(t ^ (t >>> 15), t | 1)
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
+  return Object.assign(next, {
+    getState: () => a,
+    setState: (s: number) => {
+      a = s >>> 0
+    },
+  })
 }
 
 export function randomSeed(): number {

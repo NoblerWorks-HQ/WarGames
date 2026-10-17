@@ -128,6 +128,12 @@ body::before {
 .btn-stop { border-color: rgba(231, 76, 60, 0.5); }
 .btn-stop:hover { background: rgba(231, 76, 60, 0.15); }
 .btn-reset { border-color: rgba(255, 255, 255, 0.2); }
+.load-select { background: transparent; color: inherit; font: inherit; font-size: 0.75rem; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 4px; padding: 6px 8px; max-width: 150px; cursor: pointer; }
+.load-select option { background: #111; color: #ddd; }
+.scorecard { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+.scorecard th, .scorecard td { text-align: right; padding: 4px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.scorecard th:first-child, .scorecard td:first-child { text-align: left; }
+.scorecard th { color: var(--text-muted); font-weight: normal; }
 .btn-pause { border-color: rgba(243, 156, 18, 0.5); }
 .btn-pause:hover { background: rgba(243, 156, 18, 0.15); }
 .btn:disabled { opacity: 0.35; cursor: not-allowed; }

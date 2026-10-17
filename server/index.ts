@@ -7,6 +7,8 @@ import { fileURLToPath } from 'url'
 import { GameEngine } from './engine.js'
 import { clampInterval, isAllowedOrigin } from './http.js'
 import { parseSeed } from './rng.js'
+import { SaveStore } from './saves.js'
+import { buildScorecard } from './scorecard.js'
 
 // Validate AI provider on startup
 import { validateProviders, logProviderConfig } from './ai-provider.js'
@@ -47,9 +49,39 @@ const seed = parseSeed(process.env.SEED)
 if (seed !== undefined) console.log(`Dice seeded with ${seed} (SEED=${process.env.SEED})`)
 const engine = new GameEngine({ seed })
 
+// Every finished turn is written to games/<id>.json, so a game can be reloaded, resumed or compared later.
+const saves = new SaveStore(process.env.GAMES_DIR ? resolve(process.env.GAMES_DIR) : resolve(dirname(fileURLToPath(import.meta.url)), '../games'))
+engine.onTurnComplete = () => saves.save(engine.snapshot())
+
 // Get current game state
 app.get('/api/state', (_req, res) => {
   res.json({ ...engine.state, recentEvents: engine.recentEvents, control: engine.control(), usage: engine.usageSnapshot() })
+})
+
+// Results so far for the current game: per-seat provider, score, valid-order rate, cost, latency
+app.get('/api/scorecard', (_req, res) => {
+  res.json(buildScorecard(engine.state, engine.turnHistory, engine.usageSnapshot()))
+})
+
+// Saved games, newest first
+app.get('/api/games', (_req, res) => {
+  res.json(saves.list())
+})
+
+// Load a saved game. An unfinished one comes back paused; Resume or Step carries on.
+app.post('/api/load', (req, res) => {
+  const id = req.body?.id
+  if (typeof id !== 'string') {
+    res.status(400).json({ error: 'id required' })
+    return
+  }
+  try {
+    engine.restore(saves.load(id))
+  } catch (err) {
+    res.status(404).json({ error: err instanceof Error ? err.message : String(err) })
+    return
+  }
+  res.json({ status: 'loaded', id, ...engine.control() })
 })
 
 // Get chat log (index-based to avoid duplicates)
@@ -135,6 +167,9 @@ app.listen(PORT, HOST, () => {
   console.log('  POST /api/resume - Resume a paused game')
   console.log('  POST /api/step   - Play one turn, then pause')
   console.log('  POST /api/interval - Change turn speed')
+  console.log('  GET  /api/games  - Saved games')
+  console.log('  POST /api/load   - Load a saved game')
+  console.log('  GET  /api/scorecard - Per-seat results')
   console.log('  POST /api/stop   - Stop game')
   console.log('  POST /api/reset  - Reset game')
 })

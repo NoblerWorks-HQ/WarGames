@@ -50,6 +50,11 @@ export class UsageTracker {
     else r.costUsd += u.costUsd
   }
 
+  /** Rebuild the tally from a saved snapshot. */
+  restore(roles: Record<string, RoleUsage>) {
+    this.roles = structuredClone(roles)
+  }
+
   snapshot(): UsageSnapshot {
     const total = { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, costComplete: true }
     for (const r of Object.values(this.roles)) {

@@ -73,9 +73,12 @@ Open http://localhost:3000 and click **Start**. The API server listens on 127.0.
 | **Turn every Ns** | Seconds between turns, 5-60. Takes effect immediately |
 | **Stop / Reset** | End the game / clear it |
 | **War Room** | For any turn, side by side per leader: what they said in public, what they privately reasoned (including their notes to themselves), and what they ordered and how it resolved |
+| **Load game** | Pick a saved game. An unfinished one comes back paused, with its dice, memos and cost tally intact; Resume or Step carries on exactly as the original would have. A finished one shows its summary |
 | **Cost** | Estimated API spend so far this game; hover for calls and tokens. Each faction panel shows its model and its own spend |
 
 The same controls are HTTP endpoints: `POST /api/start`, `/api/pause`, `/api/resume`, `/api/step` (409 while a turn is in progress), `/api/interval` and `/api/stop`.
+
+**Saved games and scorecard.** Every finished turn is written to `games/<id>.json` (git-ignored; set `GAMES_DIR` to move it). `GET /api/games` lists them and `POST /api/load {"id"}` loads one. `GET /api/scorecard` (also stored inside each save and shown when a game ends) gives per seat: provider and model, rank, score, valid-order rate, forfeits, betrayals, nukes, tokens, cost and average latency, which is what you need to compare providers.
 
 ## AI Providers
 

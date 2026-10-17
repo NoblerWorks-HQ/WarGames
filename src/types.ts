@@ -113,3 +113,44 @@ export interface ChatMessage {
   channel: string
   message: string
 }
+
+export interface ScorecardRow {
+  faction: string
+  provider: string | null
+  model: string | null
+  rank: number
+  won: boolean
+  score: number
+  territories: number
+  orders: number
+  invalid: number
+  forfeits: number
+  validRate: number | null
+  betrayals: number
+  nukesLaunched: number
+  calls: number
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
+  costComplete: boolean
+  avgLatencyMs: number | null
+}
+
+export interface Scorecard {
+  seed?: number
+  turns: number
+  status: 'active' | 'finished'
+  victor: string | null
+  rows: ScorecardRow[]
+}
+
+export interface SaveSummary {
+  id: string
+  savedAt: string
+  seed: number
+  turn: number
+  maxTurns: number
+  status: 'active' | 'finished'
+  victor: string | null
+  models: Record<string, string>
+}
