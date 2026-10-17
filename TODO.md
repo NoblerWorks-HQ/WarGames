@@ -8,6 +8,26 @@ project, the game is the harness for it. Last commit 2026-08-31.
 
 ---
 
+## Gameplay review (2026-10-17)
+
+All fixed 2026-10-17 in `server/engine.ts`. 13 new tests in `server/engine.test.ts` (50 total); every one of them fails against the old engine.
+
+- [x] 2026-10-17 high - Factions never saw each other's alliance proposals or messages, so diplomacy was cosmetic. The briefing now carries `inbox`, `incomingAllianceProposals`, `yourPendingProposals`, `otherFactions` and `yourLastReasoning`. `message` takes an optional private `to`. Proposals lapse after 2 turns.
+- [x] 2026-10-17 high - Orders always resolved NATO -> Russia -> China; the first faction now rotates every turn. When several factions win on the same turn, score breaks the tie.
+- [x] 2026-10-17 high - The engine fuzzy-matched unit ids and substituted another unit when the named one couldn't reach, which hid model mistakes. Orders are now strict.
+- [x] 2026-10-17 medium - `spy` did nothing; the target now appears in the next briefing.
+- [x] 2026-10-17 medium - The diplomatic victory checked `turn >= 10`, not how long the alliances had lasted; it now uses `allianceSince`.
+- [x] 2026-10-17 medium - Allies could attack, invade and nuke each other without `break_alliance`.
+- [x] 2026-10-17 medium - A unit could act on every order in a turn; it now gets one move or attack. Armor's 2 movement is now honoured.
+- [x] 2026-10-17 medium - Unit ids came from `Date.now()`, so two recruits in one turn could get the same id; ids now continue the faction's numbering.
+- [x] 2026-10-17 medium - `recruit` worked in any territory, including enemy ones, and defaulted to the first unit's location; it now requires a territory you own.
+- [x] 2026-10-17 low - The order cap was 5 in `ai.ts` and 3 in the personas and rules; it is now 3 everywhere (`MAX_ORDERS`).
+- [x] 2026-10-17 low - Running out of food did nothing; unfed units now lose hp. Upkeep is paid after income.
+- [x] 2026-10-17 low - The score left out nuclear tech and uranium.
+- [x] 2026-10-17 low - `index.html` hard-coded stale starting numbers ("0 / 100", old resources).
+- [x] 2026-10-17 low - `game/rules.md` described a different game (20 territories, cavalry/siege, 10/30/5 victory thresholds). It is rewritten from the engine and lists the `tech-tree.json` effects that aren't implemented.
+- [ ] Open design call: starting positions are asymmetric (NATO 8 territories and all tech 2, Russia 3, China 2), and NATO/Russia start at nuclear 3 with 5,000+ warheads, so `research nuclear`/`build_nuke` do nothing for them. Fine for the satire, but it weakens provider comparisons.
+
 ## Audit findings (2026-10-02)
 
 Fleet audit follow-up; all fixed on main 2026-10-02 (local app, nothing to deploy - push to publish).

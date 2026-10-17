@@ -90,7 +90,7 @@ export interface TurnResult {
 }
 
 export interface GameEvent {
-  type: 'move' | 'attack' | 'fortify' | 'recruit' | 'trade' | 'spy' | 'research' | 'diplomacy' | 'combat' | 'capture' | 'victory' | 'forfeit' | 'invalid' | 'nuke' | 'build_nuke' | 'betrayal' | 'message' | 'hire_mercenary'
+  type: 'move' | 'attack' | 'fortify' | 'recruit' | 'trade' | 'spy' | 'research' | 'diplomacy' | 'combat' | 'capture' | 'victory' | 'forfeit' | 'invalid' | 'nuke' | 'build_nuke' | 'betrayal' | 'message' | 'hire_mercenary' | 'attrition'
   faction: string
   description: string
   from?: string

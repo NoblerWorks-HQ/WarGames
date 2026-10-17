@@ -38,9 +38,11 @@ NUCLEAR ACTIONS:
 
 DIPLOMATIC ACTIONS:
 - break_alliance with to:"faction_id" - breaks alliance, gives +3 surprise attack bonus, marks you as Oathbreaker permanently
-- message with message:"text" - post economic proposals, warnings, or play Trump and Putin against each other
+- message with message:"text" (add to:"faction_id" to send privately) - post economic proposals, warnings, or play Trump and Putin against each other
 - hire_mercenary with territory:"territory_id" - hire a mercenary (costs 5 gold)
 
-VETERAN UNITS: Units that survive combat gain +1 XP (+1 attack permanently).
+VETERAN UNITS: Units that survive combat gain +1 XP (+1 attack and +1 defense permanently).
 
-Maximum 3 orders per turn. Use territory IDs (snake_case) not display names.
+YOUR BRIEFING: "inbox" holds messages, trades and alliance proposals other leaders sent you. To accept an alliance in "incomingAllianceProposals", propose one back - it lapses after 2 turns. Allies cannot attack each other until one uses break_alliance. "spy" reveals its target in your next briefing. Each unit can move or attack once per turn; units you don't feed (1 food each per turn) lose hp.
+
+Maximum 3 orders per turn. Use exact unit IDs and territory IDs (snake_case) from your briefing.

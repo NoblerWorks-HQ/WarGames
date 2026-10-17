@@ -27,7 +27,8 @@ const EVENT_ICONS: Record<string, string> = {
   forfeit: '\u274C',
   invalid: '\u26A0',
   message: '\uD83D\uDCE8',
-  hire_mercenary: '\uD83D\uDCB5'
+  hire_mercenary: '\uD83D\uDCB5',
+  attrition: '\uD83C\uDF5E'
 }
 
 class WarGamesApp {

@@ -8,6 +8,9 @@
 import { getProvider } from './ai-provider.js'
 import type { FactionOrders } from './types.js'
 
+/** Maximum orders a faction may submit per turn; extra orders are dropped. */
+export const MAX_ORDERS = 3
+
 export async function getFactionOrders(
   factionId: string,
   persona: string,
@@ -23,7 +26,9 @@ ${briefing}
 
 Respond with ONLY valid JSON. No prose, no markdown, no code fences.
 Use territory IDs (snake_case like "western_na", "central_asia") not display names.
-Format: {"orders":[{"action":"move|attack|fortify|recruit|trade|spy|research|diplomacy",...params}],"reasoning":"<1 sentence>"}`
+Use exact unit IDs from "units"; an order naming an unknown or out-of-range unit is rejected.
+Each unit can move or attack once per turn. At most ${MAX_ORDERS} orders; extra orders are dropped.
+Format: {"orders":[{"action":"move|attack|fortify|recruit|trade|spy|research|diplomacy|build_nuke|nuke|break_alliance|message|hire_mercenary",...params}],"reasoning":"<1 sentence>"}`
 
     console.log(`[${factionId}] Requesting orders from ${provider.name}...`)
     const text = await provider.generate(prompt)
@@ -37,8 +42,7 @@ Format: {"orders":[{"action":"move|attack|fortify|recruit|trade|spy|research|dip
       console.log(`[${factionId}] Invalid format - no orders array`)
       return { orders: [], reasoning: 'Invalid response format - forfeited turn' }
     }
-    // Cap at 5 orders
-    parsed.orders = parsed.orders.slice(0, 5)
+    parsed.orders = parsed.orders.slice(0, MAX_ORDERS)
     console.log(
       `[${factionId}] Got ${parsed.orders.length} orders: ${parsed.orders.map((o) => o.action).join(', ')}`
     )

@@ -33,6 +33,21 @@ const personas: Record<string, string> = {
   china: loadPersona('china')
 }
 
+/** Turns an unanswered alliance proposal stays open. */
+const PROPOSAL_TTL = 2
+
+/** Event types every faction hears about, whoever caused them. */
+const PUBLIC_EVENTS = new Set<GameEvent['type']>(['combat', 'capture', 'nuke', 'betrayal', 'build_nuke', 'victory'])
+
+const UNIT_ABBR: Record<string, string> = { infantry: 'inf', armor: 'arm', artillery: 'art' }
+
+interface InboxItem {
+  turn: number
+  from: string
+  kind: 'message' | 'alliance_proposal' | 'trade'
+  text: string
+}
+
 /** Thrown when a game was reset (stop -> start) while a turn was awaiting the AI. */
 export class StaleTurnError extends Error {
   constructor(turn: number) {
@@ -46,7 +61,19 @@ export class GameEngine {
   turnHistory: TurnResult[] = []
   chatLog: ChatMessage[] = []
   recentEvents: GameEvent[] = []
-  pendingAlliances: Set<string> = new Set()
+  /** "proposer->target" -> turn the proposal was made. Expires after PROPOSAL_TTL turns. */
+  pendingAlliances: Map<string, number> = new Map()
+  /** "a|b" (sorted) -> turn the alliance formed; the diplomatic victory clock. */
+  allianceSince: Map<string, number> = new Map()
+  /** Diplomatic messages and proposals each faction will see in its next briefing. */
+  inbox: Record<string, InboxItem[]> = {}
+  /** Territories revealed by spying: written this turn, shown in next turn's briefing. */
+  pendingIntel: Record<string, Set<string>> = {}
+  intel: Record<string, Set<string>> = {}
+  /** Units that have already moved or attacked this turn. */
+  actedUnits: Set<string> = new Set()
+  /** Last unit number issued per "faction-type" prefix, so ids never repeat. */
+  unitSerial: Record<string, number> = {}
   surpriseAttackBonus: Record<string, number> = {}
   running = false
   turnExecuting = false
@@ -65,7 +92,13 @@ export class GameEngine {
     this.state = JSON.parse(raw)
     this.turnHistory = []
     this.chatLog = []
-    this.pendingAlliances = new Set()
+    this.pendingAlliances = new Map()
+    this.allianceSince = new Map()
+    this.inbox = {}
+    this.pendingIntel = {}
+    this.intel = {}
+    this.actedUnits = new Set()
+    this.unitSerial = {}
     this.surpriseAttackBonus = {}
     this.state.game.startedAt = new Date().toISOString()
     this.state.game.turn = 0
@@ -160,31 +193,29 @@ export class GameEngine {
     }
 
     // Build per-unit action hints so AI knows valid moves/attacks
-    const unitActions: Record<string, { location: string; canMoveTo: string[]; canAttack: string[] }> = {}
+    const unitActions: Record<string, { type: string; location: string; canMoveTo: string[]; canAttack: string[] }> = {}
     for (const unit of faction.units) {
-      const adj = this.state.map.adjacency[unit.territory] || []
-      const canMoveTo: string[] = []
-      const canAttack: string[] = []
-      for (const tId of adj) {
+      const canAttack = (this.state.map.adjacency[unit.territory] || []).filter(tId => {
         const t = this.state.map.territories[tId]
-        if (!t) continue
-        // Can attack if enemy units or mercenaries are there
-        const hasEnemyUnits = Object.entries(this.state.factions).some(([fid, f]) =>
-          fid !== factionId && f.units.some(u => u.territory === tId)
-        )
+        if (!t || this.isAllied(factionId, t.owner)) return false
+        const hasEnemyUnits = this.getUnitsAtTerritory(tId).some(u => u.owner !== factionId)
         const hasMercs = (t.mercenaries || 0) > 0 && t.owner !== factionId
-        if (hasEnemyUnits || hasMercs) {
-          canAttack.push(tId)
-        }
-        // Can move to if no enemy units (or empty)
-        if (!hasEnemyUnits) {
-          canMoveTo.push(tId)
-        }
-      }
-      unitActions[unit.id] = { location: unit.territory, canMoveTo, canAttack }
+        return hasEnemyUnits || hasMercs
+      })
+      unitActions[unit.id] = { type: unit.type, location: unit.territory, canMoveTo: this.reachable(factionId, unit), canAttack }
+    }
+
+    // Diplomacy: what others said to you, and alliance proposals waiting on an answer
+    const incomingProposals: { from: string; turn: number }[] = []
+    const outgoingProposals: { to: string; turn: number }[] = []
+    for (const [key, turn] of this.pendingAlliances) {
+      const [from, to] = key.split('->')
+      if (to === factionId) incomingProposals.push({ from, turn })
+      if (from === factionId) outgoingProposals.push({ to, turn })
     }
 
     const turnsLeft = this.state.game.maxTurns - this.state.game.turn
+    const lastTurn = this.turnHistory.at(-1)
     return JSON.stringify({
       turn: this.state.game.turn,
       maxTurns: this.state.game.maxTurns,
@@ -192,6 +223,7 @@ export class GameEngine {
       urgency: turnsLeft <= 5 ? 'CRITICAL - game ends soon, act decisively!' : turnsLeft <= 10 ? 'Time is running out - be aggressive!' : 'Play aggressively - this is a short game.',
       you: factionId,
       resources: faction.resources,
+      foodUpkeepPerTurn: faction.units.length,
       tech: faction.tech,
       nukes: faction.nukes || 0,
       oathbreaker: faction.oathbreaker || false,
@@ -200,10 +232,75 @@ export class GameEngine {
       territoryCount: faction.territoryCount,
       continentsControlled: continentControl,
       visibleMap: territoryStates,
-      alliances: faction.alliances,
+      alliances: faction.alliances.map(a => ({ with: a, sinceTurn: this.allianceSince.get(this.pairKey(factionId, a)) })),
+      incomingAllianceProposals: incomingProposals,
+      yourPendingProposals: outgoingProposals,
+      inbox: (this.inbox[factionId] || []).slice(-10),
+      otherFactions: Object.fromEntries(Object.entries(this.state.factions)
+        .filter(([fid]) => fid !== factionId)
+        .map(([fid, f]) => [fid, { territoryCount: f.territoryCount, alliances: f.alliances, oathbreaker: f.oathbreaker || false }])),
+      yourLastReasoning: lastTurn?.orders[factionId]?.reasoning,
       victoryConditions: this.state.victoryConditions,
-      recentEvents: this.turnHistory.slice(-3).flatMap(t => t.events.filter(e => e.faction === factionId || e.type === 'combat').map(e => e.description))
+      recentEvents: this.turnHistory.slice(-3).flatMap(t => t.events
+        .filter(e => e.faction === factionId || PUBLIC_EVENTS.has(e.type) || e.details?.to === factionId)
+        .map(e => `T${t.turn}: ${e.description}`))
     })
+  }
+
+  private pairKey(a: string, b: string): string {
+    return [a, b].sort().join('|')
+  }
+
+  private isAllied(factionId: string, other: string | null | undefined): boolean {
+    return !!other && other !== factionId && this.state.factions[factionId].alliances.includes(other)
+  }
+
+  /**
+   * Territories a unit can move to this turn: adjacent ones with no enemy (or
+   * allied) units and no allied owner; units with movement 2 may also pass
+   * through one territory the faction owns that holds no other faction's units.
+   */
+  private reachable(factionId: string, unit: Unit): string[] {
+    const enterable = (tId: string) => {
+      const t = this.state.map.territories[tId]
+      if (!t || this.isAllied(factionId, t.owner)) return false
+      return !this.getUnitsAtTerritory(tId).some(u => u.owner !== factionId)
+    }
+    const result = new Set<string>()
+    const adj = this.state.map.adjacency[unit.territory] || []
+    for (const tId of adj) if (enterable(tId)) result.add(tId)
+    if ((UNIT_STATS[unit.type]?.movement || 1) >= 2) {
+      for (const mid of adj) {
+        if (this.state.map.territories[mid]?.owner !== factionId || !enterable(mid)) continue
+        for (const tId of this.state.map.adjacency[mid] || []) {
+          if (tId !== unit.territory && enterable(tId)) result.add(tId)
+        }
+      }
+    }
+    return Array.from(result)
+  }
+
+  /** Next never-used id for a new unit, e.g. nato-inf-8 after nato-inf-1..7. */
+  private nextUnitId(factionId: string, abbr: string): string {
+    const prefix = `${factionId}-${abbr}-`
+    if (this.unitSerial[prefix] === undefined) {
+      let max = 0
+      for (const u of this.state.factions[factionId].units) {
+        if (u.id.startsWith(prefix)) max = Math.max(max, Number(u.id.slice(prefix.length)) || 0)
+      }
+      this.unitSerial[prefix] = max
+    }
+    return `${prefix}${++this.unitSerial[prefix]}`
+  }
+
+  /** Find the ordered unit by exact id, rejecting unknown ids and units that already acted. */
+  private orderedUnit(factionId: string, order: Order): Unit | GameEvent {
+    const fName = this.state.factions[factionId].name
+    if (!order.unit) return { type: 'invalid', faction: factionId, description: `${fName}: ${order.action} order names no unit` }
+    const unit = this.state.factions[factionId].units.find(u => u.id === order.unit)
+    if (!unit) return { type: 'invalid', faction: factionId, description: `${fName}: unknown unit ${order.unit}` }
+    if (this.actedUnits.has(unit.id)) return { type: 'invalid', faction: factionId, description: `${fName}: ${unit.id} already acted this turn` }
+    return unit
   }
 
   private getVisibleTerritories(factionId: string): string[] {
@@ -237,6 +334,9 @@ export class GameEngine {
       }
     }
 
+    // Spy reports from last turn
+    for (const tId of this.intel[factionId] || []) visible.add(tId)
+
     return Array.from(visible)
   }
 
@@ -253,14 +353,19 @@ export class GameEngine {
     for (const fid of Object.keys(this.surpriseAttackBonus)) {
       delete this.surpriseAttackBonus[fid]
     }
+    this.actedUnits.clear()
+    // Last turn's spy reports become this turn's vision
+    this.intel = this.pendingIntel
+    this.pendingIntel = {}
+    // Unanswered alliance proposals lapse
+    for (const [key, proposed] of this.pendingAlliances) {
+      if (turn - proposed > PROPOSAL_TTL) this.pendingAlliances.delete(key)
+    }
 
     this.addChat('command', 'gm', 'The Arbiter', `--- TURN ${turn} ---`)
 
-    // Collect resources from owned territories
+    // Collect resources from owned territories, then pay food upkeep
     for (const [factionId, faction] of Object.entries(this.state.factions)) {
-      const foodCost = faction.units.length
-      faction.resources.food -= foodCost
-      if (faction.resources.food < 0) faction.resources.food = 0
       faction.resources.knowledge += 1
 
       // Territory resources
@@ -294,6 +399,22 @@ export class GameEngine {
       if (faction.tech.economic >= 2) {
         faction.resources.gold += Math.floor(faction.resources.gold * 0.1)
       }
+
+      // Upkeep: 1 food per unit. Each unit that can't be fed (newest first) loses 1 hp.
+      const upkeep = faction.units.length
+      const shortfall = Math.max(0, upkeep - faction.resources.food)
+      faction.resources.food = Math.max(0, faction.resources.food - upkeep)
+      if (shortfall > 0) {
+        const hungry = faction.units.slice(-shortfall)
+        for (const u of hungry) u.hp -= 1
+        const lost = hungry.filter(u => u.hp <= 0).length
+        faction.units = faction.units.filter(u => u.hp > 0)
+        events.push({
+          type: 'attrition',
+          faction: factionId,
+          description: `${faction.name} cannot feed ${shortfall} unit${shortfall > 1 ? 's' : ''}` + (lost ? ` - ${lost} lost to starvation` : ''),
+        })
+      }
     }
 
     // Get orders from each faction (parallel)
@@ -320,9 +441,12 @@ export class GameEngine {
     if (gen !== this.generation) throw new StaleTurnError(turn)
     console.log(`[turn ${turn}] All faction orders received`)
 
-    // Resolve orders
-    for (const [factionId, factionOrders] of Object.entries(allOrders)) {
-      for (const order of factionOrders.orders) {
+    // Resolve orders. The faction that resolves first rotates every turn so no
+    // seat (and no provider) always gets the first move.
+    const seats = Object.keys(this.state.factions)
+    const shift = (turn - 1) % seats.length
+    for (const factionId of [...seats.slice(shift), ...seats.slice(0, shift)]) {
+      for (const order of allOrders[factionId]?.orders || []) {
         const result = this.resolveOrder(factionId, order)
         if (result) events.push(result)
       }
@@ -335,9 +459,11 @@ export class GameEngine {
         if (territory.owner === factionId) count++
       }
       faction.territoryCount = count
+      const r = faction.resources
+      const t = faction.tech
       faction.score = (count * 3) + Math.floor(
-        (faction.resources.gold + faction.resources.food + faction.resources.iron + faction.resources.influence + faction.resources.knowledge) / 5
-      ) + ((faction.tech.military + faction.tech.economic + faction.tech.intelligence) * 2)
+        (r.gold + r.food + r.iron + r.influence + r.knowledge + (r.uranium || 0)) / 5
+      ) + ((t.military + t.economic + t.intelligence + (t.nuclear || 0)) * 2)
     }
 
     // Check victory
@@ -394,104 +520,70 @@ export class GameEngine {
       case 'move': {
         // Accept to OR target field
         const moveTo = order.to || order.target
-        // Find unit by exact ID or fuzzy match
-        let unit = faction.units.find(u => u.id === order.unit)
-        if (!unit && order.unit) {
-          unit = faction.units.find(u => u.id.includes(order.unit!) || order.unit!.includes(u.id))
+        if (!moveTo) return { type: 'invalid', faction: factionId, description: `${fName}: move order has no destination` }
+        const found = this.orderedUnit(factionId, order)
+        if (!('hp' in found)) return found
+        const unit = found
+        const territory = this.state.map.territories[moveTo]
+        if (!territory) return { type: 'invalid', faction: factionId, description: `${fName}: unknown territory ${moveTo}` }
+        if (this.isAllied(factionId, territory.owner)) {
+          return { type: 'invalid', faction: factionId, description: `${fName}: ${territory.name} belongs to an ally - break_alliance first` }
         }
-        // If no unit found, pick one that can reach the destination
-        if (!unit && moveTo) {
-          unit = faction.units.find(u => {
-            const adj = this.state.map.adjacency[u.territory]
-            return adj?.includes(moveTo)
-          })
+        const adjacent = this.state.map.adjacency[unit.territory]?.includes(moveTo)
+        const defenders = this.getUnitsAtTerritory(moveTo).filter(u => u.owner !== factionId)
+        if (defenders.some(d => this.isAllied(factionId, d.owner))) {
+          return { type: 'invalid', faction: factionId, description: `${fName}: allied units hold ${territory.name} - break_alliance first` }
         }
-        if (!unit || !moveTo) return { type: 'invalid', faction: factionId, description: `${fName}: invalid move - no unit or destination` }
-        const adj = this.state.map.adjacency[unit.territory]
-        if (!adj?.includes(moveTo)) {
-          // Try to find ANY unit that can reach
-          const altUnit = faction.units.find(u => {
-            const uAdj = this.state.map.adjacency[u.territory]
-            return uAdj?.includes(moveTo)
-          })
-          if (altUnit) {
-            unit = altUnit
-          } else {
-            return { type: 'invalid', faction: factionId, description: `${fName}: no units can reach ${moveTo}` }
-          }
+        // Moving into enemy units is an attack, which needs adjacency; otherwise use the unit's movement range
+        if (defenders.length > 0 ? !adjacent : !this.reachable(factionId, unit).includes(moveTo)) {
+          return { type: 'invalid', faction: factionId, description: `${fName}: ${unit.id} cannot reach ${territory.name} from ${unit.territory}` }
         }
+        this.actedUnits.add(unit.id)
 
         const oldTerritory = unit.territory
-        unit.territory = moveTo
-
-        const territory = this.state.map.territories[moveTo]
-        if (territory && !territory.owner) {
-          // Check for mercenary defenders
-          if (territory.mercenaries && territory.mercenaries > 0) {
-            const mercResult = this.resolveMercenaryCombat(factionId, unit, moveTo)
-            return mercResult
-          }
-          territory.owner = factionId
-          const tName = territory.name
-          return { type: 'capture', faction: factionId, description: `${fName} captures neutral ${tName}`, from: oldTerritory, to: moveTo }
-        } else if (territory && territory.owner && territory.owner !== factionId) {
-          const defenders = this.getUnitsAtTerritory(moveTo).filter(u => u.owner !== factionId)
-          if (defenders.length > 0) {
-            return this.resolveCombat(factionId, unit, defenders[0].owner, defenders[0].unit, moveTo)
-          } else {
-            territory.owner = factionId
-            const tName = territory.name
-            return { type: 'capture', faction: factionId, description: `${fName} captures undefended ${tName}`, from: oldTerritory, to: moveTo }
-          }
+        if (defenders.length > 0) {
+          return this.resolveCombat(factionId, unit, defenders[0].owner, defenders[0].unit, moveTo)
         }
-
-        const tName = this.state.map.territories[moveTo]?.name || moveTo
-        return { type: 'move', faction: factionId, description: `${fName} moves unit to ${tName}`, from: oldTerritory, to: moveTo }
+        if (!territory.owner && territory.mercenaries > 0) {
+          return this.resolveMercenaryCombat(factionId, unit, moveTo)
+        }
+        unit.territory = moveTo
+        if (territory.owner !== factionId) {
+          const was = territory.owner ? 'undefended' : 'neutral'
+          territory.owner = factionId
+          return { type: 'capture', faction: factionId, description: `${fName} captures ${was} ${territory.name}`, from: oldTerritory, to: moveTo }
+        }
+        return { type: 'move', faction: factionId, description: `${fName} moves unit to ${territory.name}`, from: oldTerritory, to: moveTo }
       }
 
       case 'attack': {
         // Accept target OR to field (AI often confuses them)
         const attackTarget = order.target || order.to
-        // Find unit by exact ID, or fuzzy match (AI sometimes drops prefix or uses wrong format)
-        let unit = faction.units.find(u => u.id === order.unit)
-        if (!unit && order.unit) {
-          // Try partial match
-          unit = faction.units.find(u => u.id.includes(order.unit!) || order.unit!.includes(u.id))
+        if (!attackTarget) return { type: 'invalid', faction: factionId, description: `${fName}: attack order has no target` }
+        const found = this.orderedUnit(factionId, order)
+        if (!('hp' in found)) return found
+        const unit = found
+        const territory = this.state.map.territories[attackTarget]
+        if (!territory) return { type: 'invalid', faction: factionId, description: `${fName}: unknown territory ${attackTarget}` }
+        if (!this.state.map.adjacency[unit.territory]?.includes(attackTarget)) {
+          return { type: 'invalid', faction: factionId, description: `${fName}: ${unit.id} at ${unit.territory} is not adjacent to ${territory.name}` }
         }
-        // If no unit specified or not found, pick closest unit that can reach the target
-        if (!unit && attackTarget) {
-          unit = faction.units.find(u => {
-            const adj = this.state.map.adjacency[u.territory]
-            return adj?.includes(attackTarget)
-          })
-        }
-        if (!unit || !attackTarget) return { type: 'invalid', faction: factionId, description: `${fName}: invalid attack - no unit or target` }
-        const attackFrom = unit.territory
-        const adj = this.state.map.adjacency[unit.territory]
-        if (!adj?.includes(attackTarget)) {
-          // Try to find ANY unit that can reach the target
-          const altUnit = faction.units.find(u => {
-            const uAdj = this.state.map.adjacency[u.territory]
-            return uAdj?.includes(attackTarget)
-          })
-          if (altUnit) {
-            unit = altUnit
-          } else {
-            return { type: 'invalid', faction: factionId, description: `${fName}: no units adjacent to ${attackTarget}` }
-          }
-        }
-
+        if (territory.owner === factionId) return { type: 'invalid', faction: factionId, description: `${fName}: can't attack your own ${territory.name}` }
         const defenders = this.getUnitsAtTerritory(attackTarget).filter(u => u.owner !== factionId)
+        if (this.isAllied(factionId, territory.owner) || defenders.some(d => this.isAllied(factionId, d.owner))) {
+          return { type: 'invalid', faction: factionId, description: `${fName}: ${territory.name} is held by an ally - break_alliance first` }
+        }
+        this.actedUnits.add(unit.id)
+        const attackFrom = unit.territory
+
         if (defenders.length === 0) {
-          const territory = this.state.map.territories[attackTarget]
-          // Check for mercenary defenders in neutral territory
-          if (territory && !territory.owner && territory.mercenaries && territory.mercenaries > 0) {
+          // Mercenary defenders in neutral territory
+          if (!territory.owner && territory.mercenaries > 0) {
             return this.resolveMercenaryCombat(factionId, unit, attackTarget)
           }
           unit.territory = attackTarget
-          if (territory && territory.owner !== factionId) territory.owner = factionId
-          const tName = territory?.name || attackTarget
-          return { type: 'capture', faction: factionId, description: `${fName} takes undefended ${tName}`, from: attackFrom, to: attackTarget }
+          territory.owner = factionId
+          return { type: 'capture', faction: factionId, description: `${fName} takes undefended ${territory.name}`, from: attackFrom, to: attackTarget }
         }
 
         return this.resolveCombat(factionId, unit, defenders[0].owner, defenders[0].unit, attackTarget)
@@ -518,13 +610,17 @@ export class GameEngine {
         if (unitType === 'armor' && faction.tech.military < 1) return { type: 'invalid', faction: factionId, description: `${fName}: mechanized infantry not researched` }
         if (unitType === 'artillery' && faction.tech.military < 2) return { type: 'invalid', faction: factionId, description: `${fName}: precision strike not researched` }
 
-        const tId = order.territory || order.to || order.target || faction.units[0]?.territory
-        if (!tId) return { type: 'invalid', faction: factionId, description: `${fName}: no territory for recruitment` }
+        const tId = order.territory || order.to || order.target
+        if (!tId) return { type: 'invalid', faction: factionId, description: `${fName}: recruit order names no territory` }
+        if (this.state.map.territories[tId]?.owner !== factionId) {
+          return { type: 'invalid', faction: factionId, description: `${fName}: can only recruit in a territory you own, not ${tId}` }
+        }
 
         faction.resources.gold -= stats.cost.gold
         faction.resources.iron -= stats.cost.iron
-        const newUnit = { id: `${factionId}-${unitType[0]}-${Date.now()}`, type: unitType as 'infantry' | 'armor' | 'artillery', territory: tId, hp: 2, xp: 0 }
+        const newUnit = { id: this.nextUnitId(factionId, UNIT_ABBR[unitType]), type: unitType as 'infantry' | 'armor' | 'artillery', territory: tId, hp: 2, xp: 0 }
         faction.units.push(newUnit)
+        this.actedUnits.add(newUnit.id) // fresh recruits act from next turn
         const tName = this.state.map.territories[tId]?.name || tId
         return { type: 'recruit', faction: factionId, description: `${fName} recruits ${unitType} at ${tName}`, to: tId }
       }
@@ -559,10 +655,15 @@ export class GameEngine {
       }
 
       case 'spy': {
+        const spyTarget = order.target || order.territory || order.to
+        if (!spyTarget || !this.state.map.territories[spyTarget]) {
+          return { type: 'invalid', faction: factionId, description: `${fName}: spy needs a territory target` }
+        }
         const cost = faction.tech.intelligence >= 1 ? 1 : 2
         if (faction.resources.influence < cost) return { type: 'invalid', faction: factionId, description: `${fName}: not enough influence to spy` }
         faction.resources.influence -= cost
-        return { type: 'spy', faction: factionId, description: `${fName} sends spies to ${order.target}`, to: order.target }
+        ;(this.pendingIntel[factionId] ??= new Set()).add(spyTarget)
+        return { type: 'spy', faction: factionId, description: `${fName} sends spies to ${this.state.map.territories[spyTarget].name}`, to: spyTarget }
       }
 
       case 'trade': {
@@ -570,44 +671,54 @@ export class GameEngine {
         const target = this.state.factions[order.to]
         if (!target) return { type: 'invalid', faction: factionId, description: `${fName}: unknown trade target` }
 
-        for (const [res, amount] of Object.entries(order.offer)) {
-          const fRes = faction.resources as Record<string, number>
-          if ((fRes[res] || 0) < (amount as number)) return { type: 'invalid', faction: factionId, description: `${fName}: can't afford trade` }
-          fRes[res] -= amount as number;
-          (target.resources as Record<string, number>)[res] = ((target.resources as Record<string, number>)[res] || 0) + (amount as number)
+        if (order.to === factionId) return { type: 'invalid', faction: factionId, description: `${fName}: can't trade with yourself` }
+        const fRes = faction.resources as Record<string, number>
+        const tRes = target.resources as Record<string, number>
+        const offer = Object.entries(order.offer)
+        if (offer.some(([res, amount]) => !(res in fRes) || typeof amount !== 'number' || amount <= 0 || fRes[res] < amount)) {
+          return { type: 'invalid', faction: factionId, description: `${fName}: can't afford trade` }
         }
+        for (const [res, amount] of offer) {
+          fRes[res] -= amount
+          tRes[res] = (tRes[res] || 0) + amount
+        }
+        this.notify(order.to, factionId, 'trade', `${fName} sent you ${JSON.stringify(order.offer)}`)
 
         this.addChat('diplomacy', factionId, fName, `Sends ${JSON.stringify(order.offer)} to ${target.name}`)
-        return { type: 'trade', faction: factionId, description: `${fName} trades ${JSON.stringify(order.offer)} to ${target.name}` }
+        return { type: 'trade', faction: factionId, description: `${fName} trades ${JSON.stringify(order.offer)} to ${target.name}`, details: { to: order.to } }
       }
 
       case 'diplomacy': {
         if (!order.to || !order.proposal) return { type: 'invalid', faction: factionId, description: `${fName}: invalid diplomacy` }
+        const target = this.state.factions[order.to]
+        if (!target || order.to === factionId) return { type: 'invalid', faction: factionId, description: `${fName}: unknown faction ${order.to}` }
         if (order.proposal === 'alliance') {
-          const target = this.state.factions[order.to]
-          if (!target) return { type: 'invalid', faction: factionId, description: `${fName}: unknown faction ${order.to}` }
+          if (faction.alliances.includes(order.to)) return { type: 'invalid', faction: factionId, description: `${fName}: already allied with ${target.name}` }
           // Oathbreakers cannot form alliances
           if (faction.oathbreaker) return { type: 'invalid', faction: factionId, description: `${fName}: marked as Oathbreaker — no faction will accept your alliance` }
           if (target.oathbreaker) return { type: 'invalid', faction: factionId, description: `${fName}: ${target.name} is an Oathbreaker — alliance refused` }
-          // Alliance requires mutual proposal — track pending proposals
+          // Alliance requires mutual proposal — the target sees this one in its next briefing
           const pendingKey = `${factionId}->${order.to}`
           const reverseKey = `${order.to}->${factionId}`
-          this.pendingAlliances.add(pendingKey)
 
           if (this.pendingAlliances.has(reverseKey)) {
             // Both sides have proposed — form the alliance
-            if (!faction.alliances.includes(order.to)) faction.alliances.push(order.to)
+            faction.alliances.push(order.to)
             if (!target.alliances.includes(factionId)) target.alliances.push(factionId)
             this.pendingAlliances.delete(pendingKey)
             this.pendingAlliances.delete(reverseKey)
+            this.allianceSince.set(this.pairKey(factionId, order.to), this.state.game.turn)
+            this.notify(order.to, factionId, 'message', `${fName} accepted your alliance`)
             this.addChat('diplomacy', factionId, fName, `Alliance formed with ${target.name}!`)
-            return { type: 'diplomacy', faction: factionId, description: `${fName} and ${target.name} form an alliance!` }
-          } else {
-            this.addChat('diplomacy', factionId, fName, `Proposes alliance with ${target.name}`)
-            return { type: 'diplomacy', faction: factionId, description: `${fName} proposes alliance with ${target.name}` }
+            return { type: 'diplomacy', faction: factionId, description: `${fName} and ${target.name} form an alliance!`, details: { to: order.to } }
           }
+          this.pendingAlliances.set(pendingKey, this.state.game.turn)
+          this.notify(order.to, factionId, 'alliance_proposal', `${fName} proposes an alliance - propose one back to ${factionId} within ${PROPOSAL_TTL} turns to accept`)
+          this.addChat('diplomacy', factionId, fName, `Proposes alliance with ${target.name}`)
+          return { type: 'diplomacy', faction: factionId, description: `${fName} proposes alliance with ${target.name}`, details: { to: order.to } }
         }
-        return { type: 'diplomacy', faction: factionId, description: `${fName} proposes ${order.proposal} with ${this.state.factions[order.to]?.name || order.to}` }
+        this.notify(order.to, factionId, 'message', `${fName} proposes: ${order.proposal}`)
+        return { type: 'diplomacy', faction: factionId, description: `${fName} proposes ${order.proposal} with ${target.name}`, details: { to: order.to } }
       }
 
       case 'build_nuke': {
@@ -660,6 +771,9 @@ export class GameEngine {
         // Can't nuke your own territory
         if (targetTerritory.owner === factionId) {
           return { type: 'invalid', faction: factionId, description: `${fName}: can't nuke your own territory` }
+        }
+        if (this.isAllied(factionId, targetTerritory.owner)) {
+          return { type: 'invalid', faction: factionId, description: `${fName}: ${targetTerritory.name} belongs to an ally - break_alliance first` }
         }
 
         faction.nukes--
@@ -725,7 +839,9 @@ export class GameEngine {
         if (target) {
           const reverseIndex = target.alliances.indexOf(factionId)
           if (reverseIndex !== -1) target.alliances.splice(reverseIndex, 1)
+          this.notify(order.to, factionId, 'message', `${fName} has broken your alliance`)
         }
+        this.allianceSince.delete(this.pairKey(factionId, order.to))
 
         // Mark as oathbreaker permanently — no future alliances
         faction.oathbreaker = true
@@ -740,8 +856,13 @@ export class GameEngine {
       case 'message': {
         const msg = order.message
         if (!msg) return { type: 'invalid', faction: factionId, description: `${fName}: empty message` }
-        this.addChat('diplomacy', factionId, fName, msg)
-        return { type: 'message', faction: factionId, description: `${fName} sends a diplomatic message` }
+        // "to" a faction id sends privately; otherwise every other faction receives it
+        const text = String(msg).slice(0, 280)
+        const direct = order.to && order.to !== factionId && this.state.factions[order.to] ? order.to : null
+        const recipients = direct ? [direct] : Object.keys(this.state.factions).filter(f => f !== factionId)
+        for (const r of recipients) this.notify(r, factionId, 'message', text)
+        this.addChat('diplomacy', factionId, fName, direct ? `(to ${this.state.factions[direct].name}) ${text}` : text)
+        return { type: 'message', faction: factionId, description: `${fName} sends a diplomatic message`, details: direct ? { to: direct } : undefined }
       }
 
       case 'hire_mercenary': {
@@ -763,8 +884,9 @@ export class GameEngine {
 
         faction.resources.gold -= hireCost
         territory.mercenaries--
-        const mercUnit = { id: `${factionId}-merc-${Date.now()}`, type: 'infantry' as const, territory: tId, hp: 2, xp: 0 }
+        const mercUnit = { id: this.nextUnitId(factionId, 'merc'), type: 'infantry' as const, territory: tId, hp: 2, xp: 0 }
         faction.units.push(mercUnit)
+        this.actedUnits.add(mercUnit.id)
 
         // Claim the territory if neutral
         if (!territory.owner) territory.owner = factionId
@@ -776,6 +898,12 @@ export class GameEngine {
       default:
         return { type: 'invalid', faction: factionId, description: `${fName}: unknown action ${order.action}` }
     }
+  }
+
+  private notify(to: string, from: string, kind: InboxItem['kind'], text: string) {
+    const box = (this.inbox[to] ??= [])
+    box.push({ turn: this.state.game.turn, from, kind, text })
+    if (box.length > 20) box.splice(0, box.length - 20)
   }
 
   private getUnitsAtTerritory(tId: string): { owner: string; unit: Unit }[] {
@@ -891,25 +1019,35 @@ export class GameEngine {
   }
 
   private checkVictory(): { faction: string; type: string } | null {
+    const vc = this.state.victoryConditions
+    const turn = this.state.game.turn
+    const winners: { faction: string; type: string }[] = []
     for (const [factionId, faction] of Object.entries(this.state.factions)) {
       // Domination
-      if (faction.territoryCount >= this.state.victoryConditions.domination.territoriesRequired) {
-        return { faction: factionId, type: 'domination' }
+      if (faction.territoryCount >= vc.domination.territoriesRequired) {
+        winners.push({ faction: factionId, type: 'domination' })
+        continue
       }
       // Economic
       let coastCount = 0
       for (const territory of Object.values(this.state.map.territories)) {
         if (territory.owner === factionId && territory.terrain === 'coast') coastCount++
       }
-      if (faction.resources.gold >= this.state.victoryConditions.economic.goldRequired && coastCount >= this.state.victoryConditions.economic.coastTerritoriesRequired) {
-        return { faction: factionId, type: 'economic' }
+      if (faction.resources.gold >= vc.economic.goldRequired && coastCount >= vc.economic.coastTerritoriesRequired) {
+        winners.push({ faction: factionId, type: 'economic' })
+        continue
       }
-      // Diplomatic (must hold alliances for minimum turns)
-      if (faction.alliances.length >= this.state.victoryConditions.diplomatic.alliancesRequired &&
-          this.state.game.turn >= this.state.victoryConditions.diplomatic.turnsRequired) {
-        return { faction: factionId, type: 'diplomatic' }
+      // Diplomatic: enough alliances, each held for turnsRequired turns
+      const held = faction.alliances.filter(a => {
+        const since = this.allianceSince.get(this.pairKey(factionId, a))
+        return since !== undefined && turn - since >= vc.diplomatic.turnsRequired
+      })
+      if (held.length >= vc.diplomatic.alliancesRequired) {
+        winners.push({ faction: factionId, type: 'diplomatic' })
       }
     }
-    return null
+    // Simultaneous winners: highest score takes it, so faction order never decides
+    winners.sort((a, b) => this.state.factions[b.faction].score - this.state.factions[a.faction].score)
+    return winners[0] ?? null
   }
 }

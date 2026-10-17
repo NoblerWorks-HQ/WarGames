@@ -71,13 +71,20 @@ describe('resource gain', () => {
     expect(china.knowledge).toBe(9)
   })
 
-  it('floors food at zero rather than going negative', async () => {
-    engine.state.factions.russia.resources.food = 0
+  it('floors food at zero and damages the units it cannot feed', async () => {
+    engine.state.factions.russia.resources.food = 4
     for (const t of Object.values(engine.state.map.territories)) {
       if (t.owner === 'russia') t.resources = {}
     }
-    await engine.executeTurn()
-    expect(engine.state.factions.russia.resources.food).toBe(0)
+    const result = await engine.executeTurn()
+    const russia = engine.state.factions.russia
+    expect(russia.resources.food).toBe(0)
+    // 6 units, 4 food: the two newest go hungry
+    expect(russia.units.map(u => u.hp)).toEqual([2, 2, 2, 2, 1, 1])
+    expect(result.events.find(e => e.type === 'attrition')!.faction).toBe('russia')
+
+    await engine.executeTurn() // no food at all: every unit loses 1 hp, the two at 1 hp die
+    expect(russia.units).toHaveLength(4)
   })
 
   it('pays a continent bonus only for a whole continent', async () => {
@@ -150,6 +157,73 @@ describe('orders', () => {
   })
 })
 
+describe('order validation', () => {
+  it('rejects unknown unit ids instead of guessing a unit', async () => {
+    orders.nato = [{ action: 'move', unit: 'inf-1', to: 'alaska' }]
+    const result = await engine.executeTurn()
+    expect(result.events.find(e => e.faction === 'nato')!.type).toBe('invalid')
+    expect(unit('nato', 'nato-inf-1')!.territory).toBe('western_na')
+  })
+
+  it('does not swap in another unit when the named one cannot reach', async () => {
+    // nato-inf-5 (eastern_europe) could reach scandinavia; nato-inf-1 cannot
+    orders.nato = [{ action: 'move', unit: 'nato-inf-1', to: 'scandinavia' }]
+    const result = await engine.executeTurn()
+    expect(result.events.find(e => e.faction === 'nato')!.type).toBe('invalid')
+    expect(unit('nato', 'nato-inf-5')!.territory).toBe('eastern_europe')
+  })
+
+  it('lets each unit move or attack only once per turn', async () => {
+    orders.nato = [
+      { action: 'move', unit: 'nato-inf-1', to: 'alaska' },
+      { action: 'move', unit: 'nato-inf-1', to: 'western_na' },
+    ]
+    const result = await engine.executeTurn()
+    expect(result.events.filter(e => e.faction === 'nato').map(e => e.type)).toEqual(['move', 'invalid'])
+    expect(unit('nato', 'nato-inf-1')!.territory).toBe('alaska')
+  })
+
+  it('armor moves two territories through its own land; infantry cannot', async () => {
+    orders.nato = [
+      { action: 'move', unit: 'nato-arm-1', to: 'western_na' }, // western_europe -> eastern_na -> western_na
+      { action: 'move', unit: 'nato-inf-4', to: 'western_na' },
+    ]
+    const result = await engine.executeTurn()
+    expect(result.events.filter(e => e.faction === 'nato').map(e => e.type)).toEqual(['move', 'invalid'])
+    expect(unit('nato', 'nato-arm-1')!.territory).toBe('western_na')
+    expect(unit('nato', 'nato-inf-4')!.territory).toBe('western_europe')
+  })
+
+  it('gives every recruit a unique id that continues the faction numbering', async () => {
+    orders.nato = [
+      { action: 'recruit', type: 'infantry', territory: 'western_na' },
+      { action: 'recruit', type: 'infantry', territory: 'eastern_na' },
+    ]
+    await engine.executeTurn()
+    const ids = engine.state.factions.nato.units.map(u => u.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(ids.slice(-2)).toEqual(['nato-inf-8', 'nato-inf-9'])
+  })
+
+  it('recruits only in a territory the faction owns', async () => {
+    orders.nato = [{ action: 'recruit', type: 'infantry', territory: 'siberia' }]
+    const result = await engine.executeTurn()
+    expect(result.events.find(e => e.faction === 'nato')!.type).toBe('invalid')
+    expect(engine.state.factions.nato.units.some(u => u.territory === 'siberia')).toBe(false)
+  })
+
+  it('rotates which faction resolves first each turn', async () => {
+    orders.nato = [{ action: 'fortify', territory: 'western_na' }]
+    orders.russia = [{ action: 'fortify', territory: 'siberia' }]
+    orders.china = [{ action: 'fortify', territory: 'east_asia' }]
+    const firstMover = async () => (await engine.executeTurn()).events.find(e => e.type === 'fortify')!.faction
+    expect(await firstMover()).toBe('nato')
+    expect(await firstMover()).toBe('russia')
+    expect(await firstMover()).toBe('china')
+    expect(await firstMover()).toBe('nato')
+  })
+})
+
 describe('combat', () => {
   it('artillery with precision strike ignores the fort and wins on a high roll', async () => {
     dice(6)
@@ -199,7 +273,58 @@ describe('combat', () => {
   })
 })
 
+/** The briefing a faction was given on its most recent turn. */
+function lastBriefing(fid: string) {
+  const calls = vi.mocked(ai.getFactionOrders).mock.calls.filter(c => c[0] === fid)
+  return JSON.parse(calls.at(-1)![2])
+}
+
 describe('diplomacy', () => {
+  it('shows an alliance proposal to its target, and lets it lapse unanswered', async () => {
+    orders.nato = [{ action: 'diplomacy', to: 'china', proposal: 'alliance' }]
+    await engine.executeTurn()
+    delete orders.nato
+    await engine.executeTurn()
+    const brief = lastBriefing('china')
+    expect(brief.incomingAllianceProposals).toEqual([{ from: 'nato', turn: 1 }])
+    expect(brief.inbox[0]).toMatchObject({ from: 'nato', kind: 'alliance_proposal' })
+    expect(lastBriefing('nato').yourPendingProposals).toEqual([{ to: 'china', turn: 1 }])
+
+    await engine.executeTurn() // turn 3: still open
+    expect(lastBriefing('china').incomingAllianceProposals).toHaveLength(1)
+    await engine.executeTurn() // turn 4: lapsed
+    expect(lastBriefing('china').incomingAllianceProposals).toEqual([])
+  })
+
+  it('delivers messages: broadcast to everyone else, or privately with "to"', async () => {
+    orders.nato = [
+      { action: 'message', message: 'hello world' },
+      { action: 'message', to: 'russia', message: 'just you' },
+    ]
+    await engine.executeTurn()
+    delete orders.nato
+    await engine.executeTurn()
+    expect(lastBriefing('russia').inbox.map((m: { text: string }) => m.text)).toEqual(['hello world', 'just you'])
+    expect(lastBriefing('china').inbox.map((m: { text: string }) => m.text)).toEqual(['hello world'])
+    expect(lastBriefing('nato').inbox).toEqual([])
+  })
+
+  it('allies cannot attack, invade or nuke each other without breaking the alliance', async () => {
+    engine.state.factions.nato.alliances = ['russia']
+    engine.state.factions.russia.alliances = ['nato']
+    dice(6)
+    orders.russia = [
+      { action: 'attack', unit: 'russia-art-1', target: 'eastern_europe' },
+      { action: 'move', unit: 'russia-arm-1', to: 'eastern_europe' },
+      { action: 'nuke', target: 'eastern_europe' },
+    ]
+    const result = await engine.executeTurn()
+    expect(result.events.filter(e => e.faction === 'russia').map(e => e.type)).toEqual(['invalid', 'invalid', 'invalid'])
+    expect(territory('eastern_europe').owner).toBe('nato')
+    expect(unit('nato', 'nato-inf-5')).toMatchObject({ hp: 2 })
+  })
+
+
   it('an alliance forms only when both sides propose', async () => {
     orders.nato = [{ action: 'diplomacy', to: 'china', proposal: 'alliance' }]
     await engine.executeTurn()
@@ -224,6 +349,19 @@ describe('diplomacy', () => {
     orders.nato = [{ action: 'diplomacy', to: 'russia', proposal: 'alliance' }]
     const next = await engine.executeTurn()
     expect(next.events.find(e => e.faction === 'nato')!.type).toBe('invalid')
+  })
+})
+
+describe('spying', () => {
+  it('reveals the target territory in the next briefing only', async () => {
+    orders.china = [{ action: 'spy', target: 'western_na' }]
+    await engine.executeTurn()
+    expect(lastBriefing('china').visibleMap.western_na).toBeUndefined()
+    delete orders.china
+    await engine.executeTurn()
+    expect(lastBriefing('china').visibleMap.western_na).toMatchObject({ owner: 'nato' })
+    await engine.executeTurn()
+    expect(lastBriefing('china').visibleMap.western_na).toBeUndefined()
   })
 })
 
@@ -269,6 +407,25 @@ describe('game end', () => {
     await engine.executeTurn()
     expect(engine.state.game.status).toBe('finished')
     expect(engine.state.game.victor).toBe('russia')
+  })
+
+  it('a diplomatic victory needs the alliances held for turnsRequired turns', async () => {
+    const { turnsRequired } = engine.state.victoryConditions.diplomatic
+    for (const [id, f] of Object.entries(engine.state.factions)) f.alliances = ['nato', 'russia', 'china'].filter(o => o !== id)
+    const ally = (since: number) => {
+      for (const k of ['china|nato', 'china|russia', 'nato|russia']) engine.allianceSince.set(k, since)
+    }
+    engine.state.game.turn = turnsRequired - 1
+    ally(turnsRequired - 1) // formed last turn
+    await engine.executeTurn()
+    expect(engine.state.game.status).toBe('active')
+
+    ally(0) // held since the start
+    await engine.executeTurn()
+    expect(engine.state.game.status).toBe('finished')
+    // all three qualify at once: the highest score wins, not the first faction listed
+    const best = Object.entries(engine.state.factions).reduce((a, b) => (b[1].score > a[1].score ? b : a))[0]
+    expect(engine.state.game.victor).toBe(best)
   })
 
   it('updates territory counts and scores every turn', async () => {

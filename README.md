@@ -108,8 +108,8 @@ The `OPENAI_BASE_URL` option means you can use any OpenAI-compatible API, includ
 Each turn (every 10-15 seconds):
 
 1. The game engine builds a briefing for each faction with visible territories, resources, units, and valid actions
-2. All three AI factions receive their briefing and respond with strategic orders (move, attack, fortify, recruit, trade, spy, research, diplomacy, nuke)
-3. Orders are resolved - combat, territory changes, resource gains
+2. All three AI factions receive their briefing and respond with up to 3 orders (move, attack, fortify, recruit, trade, spy, research, diplomacy, message, nuke, ...). The briefing includes the messages, trades and alliance proposals other factions sent them
+3. Orders are resolved strictly: an unknown unit id or an out-of-range move is rejected, not corrected. The faction that resolves first rotates each turn, so no seat (or provider) always gets the first move
 4. A narrator AI writes a dramatic CNN-style news recap
 5. The map updates in real-time
 
@@ -153,12 +153,12 @@ game/
 
 The game content lives in `game/` and is the place to start if you want to change how War Games plays:
 
-- [`game/rules.md`](game/rules.md) - the rules the factions play by: map, terrain, resources, units, combat and victory conditions.
-- [`game/tech-tree.json`](game/tech-tree.json) - the four research tracks (military, economic, intelligence, nuclear), their costs and effects.
+- [`game/rules.md`](game/rules.md) - the full rules as the engine enforces them: map, resources, units, orders, combat, diplomacy, tech and victory conditions.
+- [`game/tech-tree.json`](game/tech-tree.json) - the four research tracks (military, economic, intelligence, nuclear) as designed. Several of its effects aren't implemented yet; `rules.md` lists which.
 - [`game/initial-world.json`](game/initial-world.json) - starting territories, adjacency, resources and units.
 - [`game/factions/`](game/factions/) - the persona prompt each faction's AI plays.
 
-Note that `rules.md` and `tech-tree.json` describe the rules; the numbers that are actually enforced (costs, ranges, combat) are in `server/engine.ts`, so change both when you rebalance.
+Neither file is read by the code or shown to the AIs. The numbers that are actually enforced (costs, ranges, combat) are in `server/engine.ts`, so update `rules.md` whenever you rebalance.
 
 ### Nuclear exchange
 
@@ -170,7 +170,7 @@ How nukes resolve in `server/engine.ts`:
 4. **Effect** - every unit in the target territory is destroyed, whoever owns it. The territory loses its fortification, becomes unowned, and its resource yield is wiped. It is not restored later: it stays neutral with no yield until someone moves a unit in and captures it.
 5. **Second strike** - if the territory belonged to a faction with nuclear 3 and at least one warhead, that faction automatically fires one back at a random territory the attacker owns, with the same effect. Range is not checked for the retaliation, and a retaliation does not trigger another one.
 
-Orders resolve in faction order (NATO, Russia, China) within a turn, so a strike lands before any later faction's orders for that turn are resolved.
+Orders resolve one faction at a time, and the faction that goes first rotates every turn (NATO on turn 1, Russia on turn 2, China on turn 3, ...). A strike lands before any faction resolving after it that turn. You can't nuke an ally's territory without breaking the alliance first.
 
 ### Game Engine
 
