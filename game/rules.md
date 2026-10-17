@@ -23,7 +23,7 @@ Everyone starts level on nuclear (tech 1, a couple of warheads), so nobody can r
 
 ### Mirror scenario
 
-`SCENARIO=mirror` (`game/scenarios/mirror.json`) starts every faction level: 3 territories (NATO: western_na, eastern_na, alaska; Russia: western_russia, central_asia, ukraine; China: southeast_asia, india, pakistan), 6 units (4 infantry, 1 armor, 1 artillery), 18 gold / 14 food / 12 iron / 9 influence / 7 knowledge / 6 uranium, tech 2/1/1/1 and 2 warheads. Territory yield totals are within 2 of each other, but the map itself isn't symmetric (NATO's land has 2 coast territories, Russia's none, China's 1), so seat-for-model rotation is still the fair comparison. The personas get an override note retracting their default starting claims.
+`SCENARIO=mirror` (`game/scenarios/mirror.json`) starts every faction level: 3 territories (NATO: western_na, eastern_na, alaska; Russia: western_russia, central_asia, ukraine; China: southeast_asia, india, pakistan), all plains with the same three yields (4 gold 3 food 2 knowledge / 3 iron 2 food 2 uranium / 2 gold 2 iron 1 influence); 6 units (4 infantry, 1 armor, 1 artillery); 18 gold / 14 food / 12 iron / 9 influence / 7 knowledge / 6 uranium; tech 2/1/1/1; 2 warheads; **no continent bonuses**; every other territory neutral with mercenaries. Identical play from this start ends in a draw. What still differs is the neighbourhood (which neutral land, and how much coast, is next door), so a tournament still rotates models through the seats. The personas get an override note retracting their default starting claims.
 
 The other 12 territories start neutral and are held by mercenaries (1-4 each).
 
@@ -176,13 +176,13 @@ movement, and research costs in resources other than knowledge and uranium.
 
 ## Victory
 
-Checked at the end of every turn. If more than one faction qualifies at once, the higher score wins.
+Checked at the end of every turn. If more than one faction qualifies at once, the higher score wins. An exact score tie is a **draw** (no victor), so faction order never decides a game.
 
 1. **Domination**: hold 16+ territories.
 2. **Economic**: hold 100+ gold and 8+ coast territories.
 3. **Diplomatic**: be allied with both other factions, with each alliance held for 10+ turns.
 
-If nobody has won by turn 20, the highest score wins:
+If nobody has won by turn 20, the highest score wins (an exact tie is a draw):
 
 `score = territories × 3 + floor(all six resources / 5) + (sum of all four tech levels) × 2`
 

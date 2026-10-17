@@ -47,7 +47,7 @@ describe('scenarios', () => {
     }
   })
 
-  it('the mirror start is level: same stock, tech, forces and territory count, near-equal yield', () => {
+  it('the mirror start is level: same stock, tech, forces and territory count, same yield, terrain and no continent bonus', () => {
     const e = new GameEngine({ seed: 1, scenario: 'mirror' })
     e.reset()
     const fs = Object.entries(e.state.factions)
@@ -61,8 +61,26 @@ describe('scenarios', () => {
       expect(f.nukes).toBe(first.nukes)
       expect(f.territoryCount).toBe(first.territoryCount)
       expect(mix(f)).toBe(mix(first))
-      expect(Math.abs(yieldOf(id) - yieldOf(fs[0][0]))).toBeLessThanOrEqual(3)
+      expect(yieldOf(id)).toBe(yieldOf(fs[0][0]))
+      const land = Object.values(e.state.map.territories).filter(t => t.owner === id)
+      expect(land.map(t => t.terrain)).toEqual(['plains', 'plains', 'plains'])
+      const yields = (owner: string) => Object.values(e.state.map.territories).filter(t => t.owner === owner).map(t => JSON.stringify(t.resources)).sort()
+      expect(yields(id)).toEqual(yields(fs[0][0]))
     }
+    // No continent is worth more to one starting position than another
+    expect(Object.values(e.state.map.continents).every(c => Object.keys(c.bonus).length === 0)).toBe(true)
+  })
+
+  it('identical play from the mirror start ends level: no seat edge', async () => {
+    const ai = await import('./ai.js')
+    vi.mocked(ai.getFactionOrders).mockImplementation(async () => ({ orders: [{ action: 'research', tech: 'military' }], reasoning: '' }))
+    const e = new GameEngine({ seed: 1, scenario: 'mirror' })
+    e.reset()
+    e.state.game.maxTurns = 5
+    while (e.state.game.status === 'active') await e.executeTurn()
+    vi.mocked(ai.getFactionOrders).mockImplementation(async () => ({ orders: [], reasoning: '' }))
+    expect(new Set(Object.values(e.state.factions).map(f => f.score)).size).toBe(1)
+    expect(e.state.game.victor).toBeNull()
   })
 
   it('the default scenario is unchanged: NATO 8 territories, Russia 3, China 2', () => {

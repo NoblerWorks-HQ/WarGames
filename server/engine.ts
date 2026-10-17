@@ -143,6 +143,8 @@ export class GameEngine {
   scenario: string
   /** Whether faction replies use the vendors' native structured output (recorded in the game for provenance). */
   structuredOutput: boolean
+  /** False skips the narrator call each turn (tournaments: no prose, no cost). */
+  narrate: boolean
   /** Names the save file; set when a game begins. */
   gameId = ''
   /** Called after every finished turn (the server autosaves here). */
@@ -158,9 +160,10 @@ export class GameEngine {
   generation = 0
 
   /** With a `seed`, every game rolls the same dice stream; otherwise each game draws a fresh seed. */
-  constructor(opts: { seed?: number; scenario?: string; structuredOutput?: boolean } = {}) {
+  constructor(opts: { seed?: number; scenario?: string; structuredOutput?: boolean; narrate?: boolean } = {}) {
     this.scenario = opts.scenario ?? 'default'
     this.structuredOutput = opts.structuredOutput ?? false
+    this.narrate = opts.narrate ?? true
     this.fixedSeed = opts.seed
     this.seed = opts.seed ?? randomSeed()
     this.rng = mulberry32(this.seed)
@@ -704,19 +707,23 @@ export class GameEngine {
     const victor = this.checkVictory()
     if (victor) {
       this.state.game.status = 'finished'
-      this.state.game.victor = victor.faction
-      events.push({ type: 'victory', faction: victor.faction, description: `${this.state.factions[victor.faction].name} achieves ${victor.type} victory!` })
-      this.addChat('command', 'gm', 'The Arbiter', `VICTORY: ${this.state.factions[victor.faction].name} wins by ${victor.type}!`)
-    }
-
-    if (turn >= this.state.game.maxTurns) {
-      this.state.game.status = 'finished'
-      let best = { id: '', score: -1 }
-      for (const [id, f] of Object.entries(this.state.factions)) {
-        if (f.score > best.score) best = { id, score: f.score }
+      if (victor.tied.length > 1) {
+        this.declareDraw(events, victor.tied, `${victor.type} victory`)
+      } else {
+        this.state.game.victor = victor.faction
+        events.push({ type: 'victory', faction: victor.faction, description: `${this.state.factions[victor.faction].name} achieves ${victor.type} victory!` })
+        this.addChat('command', 'gm', 'The Arbiter', `VICTORY: ${this.state.factions[victor.faction].name} wins by ${victor.type}!`)
       }
-      this.state.game.victor = best.id
-      events.push({ type: 'victory', faction: best.id, description: `${this.state.factions[best.id].name} wins by highest score (${best.score})!` })
+    } else if (turn >= this.state.game.maxTurns) {
+      this.state.game.status = 'finished'
+      const top = Math.max(...Object.values(this.state.factions).map(f => f.score))
+      const leaders = Object.keys(this.state.factions).filter(id => this.state.factions[id].score === top)
+      if (leaders.length > 1) {
+        this.declareDraw(events, leaders, `score (${top})`)
+      } else {
+        this.state.game.victor = leaders[0]
+        events.push({ type: 'victory', faction: leaders[0], description: `${this.state.factions[leaders[0]].name} wins by highest score (${top})!` })
+      }
     }
 
     // Post turn summary to command
@@ -724,11 +731,14 @@ export class GameEngine {
     this.addChat('command', 'gm', 'The Arbiter', eventSummary || 'A quiet turn — no significant events.')
 
     // Get narrative
-    const narrative = await getNarrative(this.narratorBrief(turn, events), u => {
-      if (gen === this.generation) this.usage.record('narrator', u)
-    })
-    if (gen !== this.generation) throw new StaleTurnError(turn)
-    this.addChat('observer', 'narrator', 'The Chronicler', narrative)
+    let narrative = ''
+    if (this.narrate) {
+      narrative = await getNarrative(this.narratorBrief(turn, events), u => {
+        if (gen === this.generation) this.usage.record('narrator', u)
+      })
+      if (gen !== this.generation) throw new StaleTurnError(turn)
+      this.addChat('observer', 'narrator', 'The Chronicler', narrative)
+    }
 
     // Store recent events for globe animation
     this.recentEvents = events
@@ -1276,7 +1286,16 @@ export class GameEngine {
     }
   }
 
-  private checkVictory(): { faction: string; type: string } | null {
+  /** An exact tie is a draw: breaking it by faction order would hand the first seat a free edge. */
+  private declareDraw(events: GameEvent[], tied: string[], on: string) {
+    this.state.game.victor = null
+    const names = tied.map(id => this.state.factions[id].name).join(' and ')
+    events.push({ type: 'victory', faction: tied[0], description: `Draw: ${names} tie on ${on}`, details: { draw: true, tied } })
+    this.addChat('command', 'gm', 'The Arbiter', `DRAW: ${names} tie on ${on}.`)
+  }
+
+  /** The best-scoring faction that met a victory condition, plus everyone tied with it on score. */
+  private checkVictory(): { faction: string; type: string; tied: string[] } | null {
     const vc = this.state.victoryConditions
     const turn = this.state.game.turn
     const winners: { faction: string; type: string }[] = []
@@ -1306,6 +1325,8 @@ export class GameEngine {
     }
     // Simultaneous winners: highest score takes it, so faction order never decides
     winners.sort((a, b) => this.state.factions[b.faction].score - this.state.factions[a.faction].score)
-    return winners[0] ?? null
+    if (!winners.length) return null
+    const top = this.state.factions[winners[0].faction].score
+    return { ...winners[0], tied: winners.filter(w => this.state.factions[w.faction].score === top).map(w => w.faction) }
   }
 }

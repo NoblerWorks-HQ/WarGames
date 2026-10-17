@@ -440,6 +440,47 @@ describe('game end', () => {
     expect(engine.state.game.victor).toBe(best)
   })
 
+  it('an exact score tie at maxTurns is a draw, not a win for the first faction listed', async () => {
+    const e = new GameEngine({ seed: 1, scenario: 'mirror' })
+    e.reset()
+    e.state.game.turn = e.state.game.maxTurns - 1
+    const result = await e.executeTurn()
+    const scores = Object.values(e.state.factions).map(f => f.score)
+    expect(new Set(scores).size).toBe(1)
+    expect(e.state.game.status).toBe('finished')
+    expect(e.state.game.victor).toBeNull()
+    expect(result.events.at(-1)).toMatchObject({ type: 'victory', details: { draw: true, tied: ['nato', 'russia', 'china'] } })
+    expect(result.events.at(-1)!.description).toMatch(/^Draw/)
+  })
+
+  it('a victory condition met by two factions on the same score is a draw', async () => {
+    const ids = Object.keys(engine.state.map.territories)
+    const need = engine.state.victoryConditions.domination.territoriesRequired
+    // Give both Russia and China the domination count by bumping the requirement down
+    engine.state.victoryConditions.domination.territoriesRequired = 1
+    for (const id of ids) territory(id).mercenaries = 0
+    for (const f of Object.values(engine.state.factions)) f.score = 0
+    engine.state.factions.nato.units = []
+    for (const t of ids) if (territory(t).owner === 'nato') territory(t).owner = null
+    // Same land, same stock, same tech: equal scores
+    const r = engine.state.factions.russia
+    const c = engine.state.factions.china
+    c.resources = { ...r.resources }
+    c.tech = { ...r.tech }
+    for (const t of ids) if (territory(t).owner) territory(t).owner = null
+    territory(ids[0]).owner = 'russia'
+    territory(ids[1]).owner = 'china'
+    territory(ids[0]).resources = {}
+    territory(ids[1]).resources = {}
+    r.units = []
+    c.units = []
+    await engine.executeTurn()
+    expect(need).toBeGreaterThan(1)
+    expect(r.score).toBe(c.score)
+    expect(engine.state.game.status).toBe('finished')
+    expect(engine.state.game.victor).toBeNull()
+  })
+
   it('updates territory counts and scores every turn', async () => {
     await engine.executeTurn()
     const nato = engine.state.factions.nato

@@ -11,21 +11,22 @@
     "territories": {
       "alaska": {
         "name": "Alaska",
-        "terrain": "mountains",
+        "terrain": "plains",
         "continent": "north_america",
         "lat": 64,
         "lng": -153,
         "owner": "nato",
         "fortified": false,
         "resources": {
-          "iron": 1,
-          "uranium": 1
+          "gold": 2,
+          "iron": 2,
+          "influence": 1
         },
         "mercenaries": 0
       },
       "western_na": {
         "name": "United States (West)",
-        "terrain": "coast",
+        "terrain": "plains",
         "continent": "north_america",
         "lat": 38,
         "lng": -120,
@@ -40,16 +41,16 @@
       },
       "eastern_na": {
         "name": "United States (East)",
-        "terrain": "coast",
+        "terrain": "plains",
         "continent": "north_america",
         "lat": 40,
         "lng": -80,
         "owner": "nato",
         "fortified": false,
         "resources": {
-          "gold": 5,
+          "iron": 3,
           "food": 2,
-          "knowledge": 3
+          "uranium": 2
         },
         "mercenaries": 0
       },
@@ -163,8 +164,9 @@
         "owner": "russia",
         "fortified": false,
         "resources": {
-          "food": 3,
-          "iron": 2
+          "gold": 2,
+          "iron": 2,
+          "influence": 1
         },
         "mercenaries": 0
       },
@@ -264,8 +266,8 @@
         "owner": "russia",
         "fortified": true,
         "resources": {
+          "gold": 4,
           "food": 3,
-          "iron": 3,
           "knowledge": 2
         },
         "mercenaries": 0
@@ -279,9 +281,9 @@
         "owner": "russia",
         "fortified": false,
         "resources": {
-          "food": 1,
-          "iron": 2,
-          "uranium": 3
+          "iron": 3,
+          "food": 2,
+          "uranium": 2
         },
         "mercenaries": 0
       },
@@ -326,39 +328,39 @@
         "owner": "china",
         "fortified": false,
         "resources": {
-          "food": 4,
-          "iron": 2,
-          "influence": 2,
-          "knowledge": 1
+          "iron": 3,
+          "food": 2,
+          "uranium": 2
         },
         "mercenaries": 0
       },
       "pakistan": {
         "name": "Pakistan",
-        "terrain": "mountains",
+        "terrain": "plains",
         "continent": "asia",
         "lat": 30,
         "lng": 70,
         "owner": "china",
         "fortified": false,
         "resources": {
-          "food": 1,
-          "uranium": 2,
-          "iron": 1
+          "gold": 2,
+          "iron": 2,
+          "influence": 1
         },
         "mercenaries": 0
       },
       "southeast_asia": {
         "name": "Southeast Asia",
-        "terrain": "coast",
+        "terrain": "plains",
         "continent": "oceania",
         "lat": -2,
         "lng": 115,
         "owner": "china",
         "fortified": false,
         "resources": {
-          "gold": 3,
-          "food": 3
+          "gold": 4,
+          "food": 3,
+          "knowledge": 2
         },
         "mercenaries": 0
       },
@@ -523,10 +525,7 @@
     "continents": {
       "north_america": {
         "name": "North America",
-        "bonus": {
-          "gold": 4,
-          "food": 2
-        },
+        "bonus": {},
         "territories": [
           "alaska",
           "western_na",
@@ -536,10 +535,7 @@
       },
       "south_america": {
         "name": "South America",
-        "bonus": {
-          "iron": 2,
-          "food": 2
-        },
+        "bonus": {},
         "territories": [
           "amazonia",
           "andes",
@@ -548,10 +544,7 @@
       },
       "europe": {
         "name": "Europe",
-        "bonus": {
-          "knowledge": 4,
-          "influence": 2
-        },
+        "bonus": {},
         "territories": [
           "scandinavia",
           "western_europe",
@@ -563,11 +556,7 @@
       },
       "africa": {
         "name": "Africa & Middle East",
-        "bonus": {
-          "gold": 3,
-          "influence": 2,
-          "uranium": 1
-        },
+        "bonus": {},
         "territories": [
           "middle_east",
           "north_africa",
@@ -577,11 +566,7 @@
       },
       "asia": {
         "name": "Asia",
-        "bonus": {
-          "gold": 3,
-          "iron": 3,
-          "food": 2
-        },
+        "bonus": {},
         "territories": [
           "siberia",
           "central_asia",
@@ -593,10 +578,7 @@
       },
       "oceania": {
         "name": "Oceania & Pacific",
-        "bonus": {
-          "gold": 2,
-          "uranium": 1
-        },
+        "bonus": {},
         "territories": [
           "southeast_asia",
           "australia"

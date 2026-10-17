@@ -11,7 +11,7 @@ vi.mock('@google/generative-ai', () => ({
   },
 }))
 
-const { getProvider, structuredOutputEnabled } = await import('./ai-provider.js')
+const { getProvider, structuredOutputEnabled, parseProviderSpec, setRoleProviders, providerFor } = await import('./ai-provider.js')
 const SCHEMA = { type: 'object', properties: { orders: { type: 'array' } } }
 
 let bodies: Record<string, unknown>[] = []
@@ -102,5 +102,28 @@ describe('gemini', () => {
     vi.stubEnv('STRUCTURED_OUTPUT', '0')
     await p.generateWithUsage('p', { schema: SCHEMA })
     expect(gemini.config).not.toHaveProperty('responseMimeType')
+  })
+})
+
+describe('provider specs and seat pins', () => {
+  afterEach(() => setRoleProviders(null))
+
+  it('parses provider[:model] with aliases and rejects unknown providers', () => {
+    expect(parseProviderSpec('claude')).toEqual({ provider: 'anthropic' })
+    expect(parseProviderSpec(' OpenAI:gpt-x ')).toEqual({ provider: 'openai', model: 'gpt-x' })
+    expect(parseProviderSpec('openai:org/model:v1')).toEqual({ provider: 'openai', model: 'org/model:v1' })
+    expect(() => parseProviderSpec('mistral')).toThrow('Unknown AI provider')
+  })
+
+  it('a pin beats the env vars, keeps models apart, and clears', () => {
+    vi.stubEnv('AI_PROVIDER', 'gemini')
+    vi.stubEnv('NATO_AI_PROVIDER', 'gemini')
+    setRoleProviders({ nato: { provider: 'anthropic', model: 'claude-a' }, russia: { provider: 'anthropic', model: 'claude-b' } })
+    expect(getProvider('nato')).toMatchObject({ name: 'anthropic', model: 'claude-a' })
+    expect(getProvider('russia')).toMatchObject({ name: 'anthropic', model: 'claude-b' })
+    expect(getProvider('china').name).toBe('gemini')
+    expect(providerFor({ provider: 'anthropic', model: 'claude-a' })).toBe(getProvider('nato'))
+    setRoleProviders(null)
+    expect(getProvider('nato').name).toBe('gemini')
   })
 })

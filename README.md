@@ -144,7 +144,7 @@ ANTHROPIC_API_KEY=...
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible endpoint (for local models, Azure, etc.) |
 | `ANTHROPIC_MODEL` | `claude-sonnet-5` | Anthropic model override |
 | `SKIP_MODEL_CHECK` | _(unset)_ | Set to `1` to skip the startup model check |
-| `SCENARIO` | `default` | Starting position. `default` is the lopsided real-world map; `mirror` gives all three factions the same territory count, forces, stock, tech and warheads, so a result says more about the model than the map. Also pickable in the UI between games. Files live in `game/scenarios/` |
+| `SCENARIO` | `default` | Starting position. `default` is the lopsided real-world map; `mirror` gives all three factions identical land (plains, same yields), forces, stock, tech and warheads, with no continent bonuses, so identical play ends in a draw. Also pickable in the UI between games. Files live in `game/scenarios/` |
 | `STRUCTURED_OUTPUT` | _(off)_ | `1` uses each vendor's native structured output for faction orders: OpenAI JSON mode, Gemini `application/json`, and for Anthropic a forced `submit_orders` tool call. It changes what the models are doing, so it's recorded in the game and the summary. A server that rejects it (an OpenAI-compatible one without JSON mode) forfeits turns rather than silently falling back |
 | `SEED` | _(random per game)_ | Seed for every die roll (a number, or any text). The same seed replays the same dice, so the same orders give the same battles. The seed of each game is shown in the opening message and the end-of-game summary |
 | `<PROVIDER>_PRICE_INPUT_PER_M` / `_OUTPUT_PER_M` | _(built-in table)_ | Override the USD-per-million-token price used for the cost estimate, e.g. `OPENAI_PRICE_INPUT_PER_M=0.2` and `OPENAI_PRICE_OUTPUT_PER_M=1.2`. Set both. A model with no price shows tokens but no cost |
@@ -170,6 +170,25 @@ Each turn (every 10-15 seconds):
 | **NATO** | President Trump | Tech advantage, coalition warfare, aggressive dealmaking |
 | **Russia** | President Putin | Defensive depth, nuclear deterrence, cold calculation |
 | **China** | President Xi Jinping | Economic leverage, patience, long-term strategy |
+
+## Tournaments
+
+Compare models head to head without the UI:
+
+```bash
+npm run tournament -- --lineup gemini,openai,anthropic --rounds 2 --budget 5
+npm run tournament -- --lineup anthropic:claude-sonnet-5,anthropic:claude-opus-5,gemini --max-turns 10 --dry-run
+```
+
+- **Lineup**: exactly three entrants, `provider` or `provider:model`. The same model may appear twice for self-play.
+- **Fair seating**: each round plays every scenario three times, rotating the lineup so every model sits in every seat once, and all games in a round share one dice seed. The default map's seat advantage then washes out, and the results table shows it as a seat win rate.
+- **Scenarios**: `--scenarios default,mirror` (the default plays both).
+- **Budget**: `--budget` (USD, default 5) stops before any new turn once the estimated spend reaches it, so the last turn can go slightly over. A model with no known price would spend unchecked, so the run refuses unless you set its price env vars or pass `--allow-unpriced`.
+- **Resume**: games are saved after every turn to `games/tournaments/<id>/`. Re-run with the same `--id` (and a higher `--budget`) to carry on where it stopped.
+- **Output**: `results.md` and `results.json`, with win rate, draws, average score and rank, valid-order rate, forfeits, betrayals, nukes, latency and cost per model, then breakdowns by scenario and by seat. The narrator is off unless you pass `--narrate`, and `STRUCTURED_OUTPUT` is honoured and recorded.
+- `--dry-run` prints the schedule without calling any model. Each game takes the scenario's 20 turns unless you pass `--max-turns`.
+
+A small tournament is noisy: one round is 6 games, so treat a gap of a win or two as a tie.
 
 ## Architecture
 

@@ -14,7 +14,10 @@ project, the game is the harness for it. Last commit 2026-08-31.
 - [x] 2026-10-18 Scorecard: `server/scorecard.ts`, `/api/scorecard`, table in the game-over summary, stored in each save.
 - [x] 2026-10-18 Mirror scenario: `SCENARIO=mirror`, `game/scenarios/`, UI picker, `/api/scenarios`, persona override note. Yield totals within 2, but terrain/coast still differ (Russia has no coast), so rotate models across seats for a fair comparison. Judgement call on which territories - change `game/scenarios/mirror.json`.
 - [x] 2026-10-18 Native structured output: `STRUCTURED_OUTPUT=1`, recorded in the game and summary. JSON mode only for OpenAI/Gemini (no strict schema: unions of order shapes don't fit strict mode); Anthropic gets the loose schema through a forced tool call. **Request bodies are unit-tested but never sent to the real APIs** - run one game per provider with it on and check forfeits. Whether it actually reduces invalid replies is unmeasured; the scorecard's valid-order rate and forfeits will show it.
-- [ ] Tournament mode (next).
+- [x] 2026-10-18 Tournament mode: `npm run tournament`, seat rotation with a shared seed per round, budget cap (refuses unpriced models unless `--allow-unpriced`), resume by `--id`, `results.md`/`results.json`. Per-seat provider pins (`setRoleProviders`) and `provider:model` specs, so two models from one vendor can play each other. Narrator off by default in tournaments.
+- [x] 2026-10-18 Fixes found by the first tournament run: an exact score tie used to go to the first faction listed (NATO) - now a draw. The first mirror scenario wasn't level (NATO's start yielded 21 vs 19, with 2 coasts and one capture from the North America bonus) - mirror start land is now plains with identical yields, and continent bonuses are off.
+- [ ] Not yet run against real providers. A 1-round, 20-turn, 3-provider tournament is 6 games x 20 turns x 3 calls = 360 calls; by the README's rough per-game estimates (averaged over the three vendors) about $1.50, but those estimates are untested. Start with `--max-turns 5`.
+- [ ] Ideas: Elo across tournaments (Phase 3); parallel games; per-turn time limit enforcement; confidence intervals in results.md.
 - [ ] Load does not restore the elapsed timer or chat animations; saves from older engine versions are rejected (version 1 only).
 
 ## Phase 1 features (2026-10-18)

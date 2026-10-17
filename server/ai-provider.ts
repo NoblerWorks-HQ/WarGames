@@ -110,11 +110,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 
 // --- Gemini ---
 
-function createGeminiProvider(): AIProvider {
+function createGeminiProvider(modelOverride?: string): AIProvider {
   const key = process.env.GEMINI_API_KEY
   if (!key) throw new Error('GEMINI_API_KEY not set. Get one at https://aistudio.google.com/apikey')
 
-  const modelId = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'
+  const modelId = modelOverride || process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'
   // Gemini 2.5 takes thinkingBudget: 0 to switch thinking off. Gemini 3.x uses
   // thinkingLevel instead and its levels differ per model (3.8 Flash rejects
   // "minimal"), so leave 3.x on its own default - 3.5 Flash-Lite defaults to
@@ -169,14 +169,14 @@ function createGeminiProvider(): AIProvider {
 
 // --- OpenAI ---
 
-function createOpenAIProvider(): AIProvider {
+function createOpenAIProvider(modelOverride?: string): AIProvider {
   const key = process.env.OPENAI_API_KEY
   if (!key) throw new Error('OPENAI_API_KEY not set. Get one at https://platform.openai.com/api-keys')
 
   const defaultBaseUrl = 'https://api.openai.com/v1'
   const baseUrl = (process.env.OPENAI_BASE_URL || defaultBaseUrl).replace(/\/+$/, '')
   const isCustomBaseUrl = baseUrl !== defaultBaseUrl
-  const model = process.env.OPENAI_MODEL || 'gpt-5.6-luna'
+  const model = modelOverride || process.env.OPENAI_MODEL || 'gpt-5.6-luna'
 
   // OpenAI's reasoning models (GPT-5 family onward, o-series) reject max_tokens
   // and a non-default temperature on Chat Completions. They take
@@ -243,11 +243,11 @@ function createOpenAIProvider(): AIProvider {
 
 // --- Anthropic ---
 
-function createAnthropicProvider(): AIProvider {
+function createAnthropicProvider(modelOverride?: string): AIProvider {
   const key = process.env.ANTHROPIC_API_KEY
   if (!key) throw new Error('ANTHROPIC_API_KEY not set. Get one at https://console.anthropic.com/settings/keys')
 
-  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5'
+  const model = modelOverride || process.env.ANTHROPIC_MODEL || 'claude-sonnet-5'
   // Sonnet 5 / Opus 5 / Opus 4.7+ reject temperature with a 400, so it is not
   // sent. Thinking is switched off to keep turns fast and cheap (as with the
   // Gemini thinkingBudget: 0 above); Fable/Mythos models reject an explicit
@@ -311,16 +311,16 @@ function createAnthropicProvider(): AIProvider {
 
 const _providers = new Map<string, AIProvider>()
 
-function createProvider(providerName: string): AIProvider {
+function createProvider(providerName: string, model?: string): AIProvider {
   switch (providerName) {
     case 'gemini':
-      return createGeminiProvider()
+      return createGeminiProvider(model)
     case 'openai':
     case 'chatgpt':
-      return createOpenAIProvider()
+      return createOpenAIProvider(model)
     case 'anthropic':
     case 'claude':
-      return createAnthropicProvider()
+      return createAnthropicProvider(model)
     default:
       throw new Error(
         `Unknown AI provider: "${providerName}". Use: gemini, openai, or anthropic`
@@ -328,16 +328,54 @@ function createProvider(providerName: string): AIProvider {
   }
 }
 
+/** "provider" or "provider:model", e.g. "anthropic:claude-opus-5". The model defaults to the provider's env/default. */
+export interface ProviderSpec {
+  provider: string
+  model?: string
+}
+
+const PROVIDER_ALIASES: Record<string, string> = { gemini: 'gemini', openai: 'openai', chatgpt: 'openai', anthropic: 'anthropic', claude: 'anthropic' }
+
+export function parseProviderSpec(text: string): ProviderSpec {
+  const [rawName, ...rest] = text.trim().split(':')
+  const provider = PROVIDER_ALIASES[rawName.toLowerCase()]
+  if (!provider) throw new Error(`Unknown AI provider: "${rawName}". Use: gemini, openai, or anthropic`)
+  const model = rest.join(':').trim()
+  return model ? { provider, model } : { provider }
+}
+
+/** Per-role provider pins that win over the *_AI_PROVIDER env vars (the tournament runner sets these per game). */
+let rolePins: Record<string, ProviderSpec> = {}
+
+export function setRoleProviders(pins: Record<string, ProviderSpec> | null): void {
+  rolePins = pins ? { ...pins } : {}
+}
+
+/** Build (or reuse) the provider for a spec. Cached per provider and model. */
+export function providerFor(spec: ProviderSpec): AIProvider {
+  const name = PROVIDER_ALIASES[spec.provider] ?? spec.provider
+  const key = `${name}:${spec.model ?? ''}`
+  let provider = _providers.get(key)
+  if (!provider) {
+    provider = createProvider(name, spec.model)
+    _providers.set(key, provider)
+    console.log(`AI Provider initialized: ${name} (${provider.model})`)
+  }
+  return provider
+}
+
 /**
  * Get the AI provider for a given role (faction or narrator).
  *
  * Resolution order:
- *   1. Per-role env var: NATO_AI_PROVIDER, RUSSIA_AI_PROVIDER, CHINA_AI_PROVIDER, NARRATOR_AI_PROVIDER
- *   2. Global fallback: AI_PROVIDER (defaults to "gemini")
+ *   1. A pin set with setRoleProviders() (tournaments)
+ *   2. Per-role env var: NATO_AI_PROVIDER, RUSSIA_AI_PROVIDER, CHINA_AI_PROVIDER, NARRATOR_AI_PROVIDER
+ *   3. Global fallback: AI_PROVIDER (defaults to "gemini")
  *
- * Providers are cached - same provider name reuses the same instance.
+ * Providers are cached - the same provider and model reuse the same instance.
  */
 export function getProvider(role?: string): AIProvider {
+  if (role && rolePins[role]) return providerFor(rolePins[role])
   const globalDefault = (process.env.AI_PROVIDER || 'gemini').toLowerCase()
 
   let providerName = globalDefault
@@ -349,10 +387,10 @@ export function getProvider(role?: string): AIProvider {
     }
   }
 
-  let provider = _providers.get(providerName)
+  let provider = _providers.get(`${providerName}:`)
   if (!provider) {
     provider = createProvider(providerName)
-    _providers.set(providerName, provider)
+    _providers.set(`${providerName}:`, provider)
     console.log(`AI Provider initialized: ${providerName}${role ? ` (for ${role})` : ''}`)
   }
 

@@ -10,6 +10,7 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "start": "tsx server/index.ts",
+    "tournament": "tsx server/tournament-cli.ts",
     "lint": "eslint .",
     "test": "vitest run"
   },

@@ -189,7 +189,7 @@ class WarGamesApp {
       if (!saves.length && select.options.length > 1) return
       select.length = 1
       for (const g of saves) {
-        const who = g.status === 'finished' ? (g.victor ?? 'draw') + ' won' : 'in progress'
+        const who = g.status === 'finished' ? (g.victor ? `${g.victor} won` : 'draw') : 'in progress'
         const opt = new Option(`T${g.turn}/${g.maxTurns} ${who} · seed ${g.seed} · ${g.savedAt.slice(0, 16).replace('T', ' ')}`, g.id)
         opt.title = Object.entries(g.models).map(([f, m]) => `${f}: ${m}`).join('\n')
         select.add(opt)
@@ -346,8 +346,8 @@ class WarGamesApp {
     // Update status
     const statusEl = document.getElementById('game-status')!
     if (this.state.game.status === 'finished') {
-      const victorName = this.state.game.victor ? this.state.factions[this.state.game.victor]?.name : 'Unknown'
-      statusEl.textContent = `VICTORY: ${victorName}`
+      const victorName = this.state.game.victor ? this.state.factions[this.state.game.victor]?.name : null
+      statusEl.textContent = victorName ? `VICTORY: ${victorName}` : 'DRAW'
       statusEl.style.color = this.state.game.victor ? FACTION_COLORS[this.state.game.victor] : '#fff'
       this.stopPolling()
       this.stopTimer()
@@ -509,7 +509,7 @@ class WarGamesApp {
     body.innerHTML = `
       <div class="summary-header">
         <div class="summary-title">GAME OVER</div>
-        <div class="summary-victor" style="color:${victorColor}">${victorName} wins</div>
+        <div class="summary-victor" style="color:${victorColor}">${victor ? `${victorName} wins` : 'Draw'}</div>
         <div class="summary-subtitle">Turn ${this.state.game.turn} / ${this.state.game.maxTurns}${this.state.game.seed !== undefined ? ` &middot; seed ${this.state.game.seed}` : ''}${this.state.game.scenario ? ` &middot; ${this.state.game.scenario}` : ''}${this.state.game.structuredOutput ? ' &middot; structured output' : ''}${this.state.usage?.total.calls ? ` &middot; ${this.formatCost(this.state.usage.total.costUsd, this.state.usage.total.costComplete)}` : ''}</div>
       </div>
       <div class="summary-section">
