@@ -1,6 +1,6 @@
 import { FlatMap } from './flatmap.js'
 import { WarRoom } from './warroom.js'
-import type { GameState, ChatMessage, GameEvent, GameControl, UsageSnapshot, SaveSummary, Scorecard, TurnResult } from './types.js'
+import type { GameState, ChatMessage, GameEvent, GameControl, UsageSnapshot, SaveSummary, Scorecard, TurnResult, SavedFile } from './types.js'
 import 'leaflet/dist/leaflet.css'
 import './style.css'
 
@@ -45,13 +45,17 @@ class WarGamesApp {
   private control: GameControl = { running: false, paused: false, turnExecuting: false, intervalMs: 15000 }
   private speedSynced = false
   private warRoom: WarRoom
+  /** A saved game shown straight from its file, without loading it into the shared server game. */
+  private local: SavedFile | null = null
+  /** READ_ONLY server: viewing saved games only. */
+  private readOnly = false
   /** While replaying: the finished game's turns and its final state, restored on exit. */
   private replay: { turns: TurnResult[]; final: GameState; at: number; timer: ReturnType<typeof setInterval> | null } | null = null
 
   constructor() {
     const container = document.getElementById('globe-container')!
     this.map = new FlatMap(container)
-    this.warRoom = new WarRoom(document.getElementById('warroom-modal')!, document.getElementById('warroom-body')!, FACTION_COLORS)
+    this.warRoom = new WarRoom(document.getElementById('warroom-modal')!, document.getElementById('warroom-body')!, FACTION_COLORS, () => this.turns())
 
     document.getElementById('btn-start')!.addEventListener('click', () => this.startGame())
     document.getElementById('btn-pause')!.addEventListener('click', () => this.pauseGame())
@@ -82,6 +86,12 @@ class WarGamesApp {
     document.getElementById('replay-slider')!.addEventListener('input', e => {
       if (this.replay) this.showReplayTurn(Number((e.target as HTMLInputElement).value))
     })
+    const lbModal = document.getElementById('leaderboard-modal')!
+    document.getElementById('btn-leaderboard')!.addEventListener('click', () => void this.showLeaderboard())
+    document.getElementById('btn-close-leaderboard')!.addEventListener('click', () => lbModal.classList.add('hidden'))
+    lbModal.addEventListener('click', e => {
+      if (e.target === lbModal) lbModal.classList.add('hidden')
+    })
     document.getElementById('btn-warroom')!.addEventListener('click', () => {
       if (this.state) this.warRoom.open(this.chatMessages, this.state)
     })
@@ -102,6 +112,59 @@ class WarGamesApp {
 
     this.fetchState()
     this.fetchChat()
+    void this.checkReadOnly()
+  }
+
+  /** On a read-only server, hide every control that would change the game and open the newest saved game. */
+  private async checkReadOnly() {
+    try {
+      const { readOnly }: { readOnly: boolean } = await (await fetch('/api/config')).json()
+      if (!readOnly) return
+      this.readOnly = true
+      document.body.classList.add('read-only')
+      const saves: SaveSummary[] = await (await fetch('/api/games')).json()
+      const pick = saves.find(g => g.status === 'finished') ?? saves[0]
+      if (pick) await this.loadLocal(pick.id)
+    } catch (err) {
+      console.error('Failed to read server config:', err)
+    }
+  }
+
+  /** Turns of the game on screen: from the saved file when viewing one locally, else from the server. */
+  private async turns(): Promise<TurnResult[]> {
+    if (this.local) return this.local.turnHistory
+    return (await fetch('/api/turns')).json()
+  }
+
+  /** The saved game as the shape /api/state returns. */
+  private localState(f: SavedFile): GameState {
+    const roles = f.usage
+    const total = { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, costComplete: true }
+    for (const r of Object.values(roles)) {
+      total.calls += r.calls
+      total.inputTokens += r.inputTokens
+      total.outputTokens += r.outputTokens
+      total.costUsd += r.costUsd
+      if (!r.costComplete) total.costComplete = false
+    }
+    return { ...structuredClone(f.state), recentEvents: f.recentEvents, control: { running: false, paused: false, turnExecuting: false, intervalMs: this.control.intervalMs }, usage: { roles, total } }
+  }
+
+  /** View a saved game in this browser only. */
+  private async loadLocal(id: string) {
+    const res = await fetch(`/api/games/${encodeURIComponent(id)}`)
+    if (!res.ok) {
+      console.error('Load failed:', await res.text())
+      return
+    }
+    const file: SavedFile = await res.json()
+    this.clearLocal()
+    this.local = file
+    this.chatMessages = file.chatLog.slice(-200)
+    this.chatIndex = file.chatLog.length
+    this.lastDisplayedTurn = file.state.game.turn
+    this.renderChat()
+    await this.fetchState()
   }
 
   private updateElapsed() {
@@ -135,6 +198,7 @@ class WarGamesApp {
   /** A new game is about to begin on the server: drop everything shown from the last one. */
   private clearLocal() {
     this.exitReplay()
+    this.local = null
     this.stopPolling()
     this.stopTimer()
     this.startTime = 0
@@ -251,6 +315,7 @@ class WarGamesApp {
 
   /** Replace the current game with a saved one; an unfinished game comes back paused. */
   private async loadGame(id: string) {
+    if (this.readOnly) return this.loadLocal(id)
     this.clearLocal()
     const res = await this.post('/api/load', { id })
     if (!res.ok) console.error('Load failed:', await res.text())
@@ -347,6 +412,11 @@ class WarGamesApp {
   }
 
   private async fetchState() {
+    if (this.local) {
+      this.state = this.localState(this.local)
+      this.render()
+      return
+    }
     try {
       const res = await fetch('/api/state')
       this.state = await res.json()
@@ -357,6 +427,7 @@ class WarGamesApp {
   }
 
   private async fetchChat() {
+    if (this.local) return
     try {
       const res = await fetch(`/api/chat?since=${this.chatIndex}`)
       const json = await res.json()
@@ -577,7 +648,7 @@ class WarGamesApp {
       </div>
       <div class="summary-actions">
         <button class="btn summary-btn-details" id="btn-replay">REPLAY</button>
-        <a class="btn summary-btn-details" id="btn-recap" href="/api/recap?download" download title="A single HTML page with the result, scorecard, control chart and bulletins">SHARE RECAP</a>
+        <a class="btn summary-btn-details" id="btn-recap" href="${this.local ? `/api/recap?id=${encodeURIComponent(this.local.id)}&download` : '/api/recap?download'}" download title="A single HTML page with the result, scorecard, control chart and bulletins">SHARE RECAP</a>
         <button class="btn summary-btn-details" id="btn-full-details">FULL DETAILS</button>
         <button class="btn summary-btn-close" id="btn-close-summary">CLOSE</button>
       </div>
@@ -599,7 +670,7 @@ class WarGamesApp {
   /** Per-seat results: which model played each seat, how it did and what it cost. Text nodes only. */
   private async fillScorecard(host: HTMLElement) {
     try {
-      const card: Scorecard = await (await fetch('/api/scorecard')).json()
+      const card: Scorecard = this.local?.scorecard ?? (await (await fetch('/api/scorecard')).json())
       const table = document.createElement('table')
       table.className = 'scorecard'
       const head = table.createTHead().insertRow()
@@ -626,10 +697,44 @@ class WarGamesApp {
     }
   }
 
+  /** Elo per model across every saved game. Text nodes only: model names come from config and disk. */
+  private async showLeaderboard() {
+    const modal = document.getElementById('leaderboard-modal')!
+    const body = document.getElementById('leaderboard-body')!
+    const note = document.getElementById('leaderboard-note')!
+    modal.classList.remove('hidden')
+    body.textContent = 'Loading...'
+    try {
+      const lb: { ratings: { model: string; rating: number; games: number; wins: number; draws: number; losses: number }[]; gamesRated: number; gamesSkipped: number } =
+        await (await fetch('/api/leaderboard')).json()
+      note.textContent = `${lb.gamesRated} finished games rated${lb.gamesSkipped ? `, ${lb.gamesSkipped} skipped (one model in every seat)` : ''}. Few games = noisy ratings.`
+      if (!lb.ratings.length) {
+        body.textContent = 'No finished games with two or more different models yet. Pick models per seat, or run npm run tournament.'
+        return
+      }
+      const table = document.createElement('table')
+      table.className = 'scorecard'
+      const head = table.createTHead().insertRow()
+      for (const h of ['#', 'Model', 'Elo', 'Games', 'W', 'D', 'L']) {
+        const th = document.createElement('th')
+        th.textContent = h
+        head.appendChild(th)
+      }
+      const tbody = table.createTBody()
+      lb.ratings.forEach((r, i) => {
+        const tr = tbody.insertRow()
+        for (const v of [i + 1, r.model, r.rating, r.games, r.wins, r.draws, r.losses]) tr.insertCell().textContent = String(v)
+      })
+      body.replaceChildren(table)
+    } catch {
+      body.textContent = 'Leaderboard unavailable.'
+    }
+  }
+
   /** Replay a finished game from its per-turn frames (saves from before frames existed can't). */
   private async startReplay() {
     if (!this.state || this.state.game.status !== 'finished') return
-    const turns: TurnResult[] = await (await fetch('/api/turns')).json()
+    const turns = await this.turns()
     const playable = turns.filter(t => t.frame)
     if (!playable.length) {
       alert('This game was saved before replays were recorded.')

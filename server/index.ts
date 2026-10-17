@@ -5,18 +5,25 @@ import { existsSync } from 'fs'
 import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { GameEngine, listScenarios } from './engine.js'
-import { clampInterval, isAllowedOrigin } from './http.js'
+import { clampInterval, isAllowedOrigin, isSameOrigin } from './http.js'
 import { parseSeed } from './rng.js'
 import { SaveStore } from './saves.js'
 import { buildScorecard } from './scorecard.js'
 import { renderRecap } from './recap.js'
+import { leaderboardFrom } from './leaderboard.js'
 
 // Validate AI provider on startup
 import { validateProviders, logProviderConfig, structuredOutputEnabled, listVendors, parseProviderSpec, providerFor, seatFor, setRoleProviders } from './ai-provider.js'
 import type { ProviderSpec } from './ai-provider.js'
+// READ_ONLY=1: a public showcase of saved games. No API keys, no model calls, nothing a visitor
+// can change: every non-GET request is refused, and the browser views games locally.
+const READ_ONLY = /^(1|true|yes|on)$/i.test(process.env.READ_ONLY ?? '')
 try {
-  logProviderConfig()
-  await validateProviders()
+  if (READ_ONLY) console.log('READ_ONLY: serving saved games only; providers are not used.')
+  else {
+    logProviderConfig()
+    await validateProviders()
+  }
 } catch (err) {
   console.error(`\n${'='.repeat(60)}`)
   console.error('AI PROVIDER NOT CONFIGURED')
@@ -29,7 +36,7 @@ try {
 }
 
 const app = express()
-const PORT = 3001
+const PORT = Number(process.env.PORT) || 3001
 // Loopback only by default: every game spends the user's provider key.
 // Set HOST=0.0.0.0 to expose it on the LAN deliberately.
 const HOST = process.env.HOST || '127.0.0.1'
@@ -37,14 +44,26 @@ const HOST = process.env.HOST || '127.0.0.1'
 // Reject cross-site browser requests outright (a text/plain form POST skips the
 // CORS preflight), then allow CORS only for the local UI.
 app.use((req, res, next) => {
-  if (!isAllowedOrigin(req.headers.origin)) {
+  if (!isAllowedOrigin(req.headers.origin) && !(READ_ONLY && isSameOrigin(req.headers.origin, req.headers.host))) {
     res.status(403).json({ error: 'origin not allowed' })
     return
   }
   next()
 })
+// Cross-origin reads stay limited to the local UI; same-origin requests need no CORS headers.
 app.use(cors({ origin: (origin, cb) => cb(null, isAllowedOrigin(origin)) }))
 app.use(express.json())
+app.use((req, res, next) => {
+  if (READ_ONLY && req.method !== 'GET' && req.method !== 'HEAD') {
+    res.status(403).json({ error: 'this is a read-only demo' })
+    return
+  }
+  next()
+})
+
+app.get('/api/config', (_req, res) => {
+  res.json({ readOnly: READ_ONLY })
+})
 
 // SEED=<number or any text> makes every game roll the same dice, so a game can be replayed.
 const seed = parseSeed(process.env.SEED)
@@ -58,7 +77,8 @@ if (!listScenarios().includes(scenario)) {
 const engine = new GameEngine({ seed, scenario, structuredOutput: structuredOutputEnabled() })
 
 // Every finished turn is written to games/<id>.json, so a game can be reloaded, resumed or compared later.
-const saves = new SaveStore(process.env.GAMES_DIR ? resolve(process.env.GAMES_DIR) : resolve(dirname(fileURLToPath(import.meta.url)), '../games'))
+const gamesDir = process.env.GAMES_DIR ? resolve(process.env.GAMES_DIR) : resolve(dirname(fileURLToPath(import.meta.url)), '../games')
+const saves = new SaveStore(gamesDir)
 engine.onTurnComplete = () => saves.save(engine.snapshot())
 
 // Get current game state
@@ -90,6 +110,24 @@ app.get('/api/recap', (req, res) => {
   // The page has no scripts; forbid them outright in case a browser ever finds one.
   res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:")
   res.send(renderRecap(game))
+})
+
+// Elo per provider/model across every finished saved game, tournaments included
+// Saved games never change in read-only mode, so the ratings are computed once.
+let leaderboardCache: ReturnType<typeof leaderboardFrom> | null = null
+app.get('/api/leaderboard', (_req, res) => {
+  const lb = leaderboardCache ?? leaderboardFrom(gamesDir)
+  if (READ_ONLY) leaderboardCache = lb
+  res.json(lb)
+})
+
+// One saved game in full, for viewing it in the browser without loading it into the shared engine
+app.get('/api/games/:id', (req, res) => {
+  try {
+    res.json(saves.load(req.params.id))
+  } catch (err) {
+    res.status(404).json({ error: err instanceof Error ? err.message : String(err) })
+  }
 })
 
 // Saved games, newest first
@@ -265,6 +303,7 @@ app.listen(PORT, HOST, () => {
   console.log('  GET  /api/providers - Vendors and seat models')
   console.log('  GET  /api/games  - Saved games')
   console.log('  GET  /api/recap  - Shareable HTML recap')
+  console.log('  GET  /api/leaderboard - Elo per model')
   console.log('  POST /api/load   - Load a saved game')
   console.log('  GET  /api/scorecard - Per-seat results')
   console.log('  POST /api/stop   - Stop game')

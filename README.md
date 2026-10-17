@@ -74,7 +74,11 @@ Open http://localhost:3000 and click **Start**. The API server listens on 127.0.
 | **Stop / Reset** | End the game / clear it |
 | **War Room** | For any turn, side by side per leader: what they said in public, what they privately reasoned (including their notes to themselves), and what they ordered and how it resolved |
 | **Scenario** | Starting position (default or mirror), selectable between games |
+| **Seat models** | Under each faction panel, between games: type `provider` or `provider:model` (e.g. `anthropic:claude-opus-5`) to choose who plays that seat. The list suggests every provider whose API key is set; empty uses the env configuration. The model is checked before the game starts, and recorded in the game |
 | **Load game** | Pick a saved game. An unfinished one comes back paused, with its dice, memos and cost tally intact; Resume or Step carries on exactly as the original would have. A finished one shows its summary |
+| **Replay** | From the game-over summary: step or play through a finished game turn by turn, with each turn's moves animated and its bulletin as a caption |
+| **Share recap** | From the game-over summary: one self-contained HTML page (no scripts, no external requests) with the result, the models, the scorecard, a territory-control chart and every bulletin. Ready to email or put on any static host. Also `GET /api/recap?id=<game>` |
+| **Leaderboard** | Elo per provider/model across every finished saved game, tournaments included. See [Leaderboard](#leaderboard) |
 | **Cost** | Estimated API spend so far this game; hover for calls and tokens. Each faction panel shows its model and its own spend |
 
 The same controls are HTTP endpoints: `POST /api/start`, `/api/pause`, `/api/resume`, `/api/step` (409 while a turn is in progress), `/api/interval` and `/api/stop`.
@@ -128,6 +132,8 @@ GEMINI_API_KEY=...
 OPENAI_API_KEY=...
 ANTHROPIC_API_KEY=...
 ```
+
+Or pick them in the browser: the box under each faction panel overrides these for the next game.
 
 ### Advanced Configuration
 
@@ -190,6 +196,31 @@ npm run tournament -- --lineup anthropic:claude-sonnet-5,anthropic:claude-opus-5
 
 A small tournament is noisy: one round is 6 games, so treat a gap of a win or two as a tie.
 
+## Leaderboard
+
+`npm run leaderboard` (or the **Leaderboard** button) rates every provider/model that has played, from all finished games in `games/` and `games/tournaments/*/`. Each three-way game counts as three head-to-head results: the winner beats both other seats, the other two are ordered by final score, and an exact tie is a draw. Ratings start at 1500 with K=32 per game, applied oldest game first. Games where one model played every seat are skipped, and a model never plays itself for rating. The command also writes `games/leaderboard.md` and `.json`.
+
+Elo from a handful of games is mostly noise. Check the game count, and prefer tournament games, which rotate seats so the map's built-in advantages wash out.
+
+## Read-only demo
+
+`READ_ONLY=1` turns the server into a public showcase of saved games:
+- **No API keys, no spend**: providers are never contacted, and the server refuses every request except GET.
+- **Viewing is private to each visitor**: the browser shows the newest finished game and can load, replay and share any other, without touching what other visitors see.
+- **Hidden controls**: anything that would play or change a game is hidden.
+
+With Docker (put the games to show in `demo-games/` first, or mount them):
+
+```bash
+docker build -t wargames-demo .
+docker run -p 3001:3001 wargames-demo
+# or: docker run -p 3001:3001 -v "$PWD/games:/app/demo-games:ro" wargames-demo
+```
+
+Any Node host also works: `npm ci && npm run build`, then run `READ_ONLY=1 HOST=0.0.0.0 GAMES_DIR=demo-games npx tsx server/index.ts`. Set `PORT` if the host assigns one. In read-only mode the server also accepts requests from its own origin, which a public host needs. Normal mode keeps the strict localhost-only origin check, because there a request can spend your API keys.
+
+The shared recap pages need no server at all, so you can put them straight on GitHub Pages.
+
 ## Architecture
 
 - **Frontend**: Vite + TypeScript + Leaflet map with territory overlays, combat effects, and game summary
@@ -206,14 +237,22 @@ server/
   ai.ts             - High-level AI functions (getFactionOrders, getNarrative)
   engine.ts         - Game engine, turn resolution, combat, diplomacy
   types.ts          - TypeScript interfaces for game state, orders, events
+  saves.ts          - Saved games (games/<id>.json), written after every turn
+  scorecard.ts      - Per-seat results of one game
+  tournament.ts     - Tournament schedule, runner and results (CLI: tournament-cli.ts)
+  leaderboard.ts    - Elo across saved games (CLI: leaderboard-cli.ts)
+  recap.ts          - Self-contained HTML recap of a game
+  pricing.ts, usage.ts - Token and cost estimates
 src/
-  main.ts           - Frontend entry point
+  main.ts           - Frontend entry point (controls, load, replay, leaderboard)
+  warroom.ts        - War Room view
   flatmap.ts        - Leaflet map rendering, territory overlays, UI
   effects/          - Map and screen animations (impacts, per-territory effects)
   style.css         - Styles
 game/
   factions/         - Faction persona markdown files
   initial-world.json - Starting game state and map configuration
+  scenarios/        - Other starting positions (mirror.json + its persona note)
   rules.md          - Full game rules (map, resources, units, combat, victory)
   tech-tree.json    - Research tracks, costs and effects
 ```

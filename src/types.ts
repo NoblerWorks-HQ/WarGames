@@ -175,3 +175,15 @@ export interface SeatModel {
   provider: string
   model: string
 }
+
+/** A saved game as the server stores it (the parts the browser uses). */
+export interface SavedFile {
+  id: string
+  savedAt: string
+  state: GameState
+  turnHistory: TurnResult[]
+  chatLog: ChatMessage[]
+  recentEvents: GameEvent[]
+  usage: Record<string, RoleUsage>
+  scorecard: Scorecard
+}

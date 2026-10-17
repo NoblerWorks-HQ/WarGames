@@ -8,6 +8,17 @@ project, the game is the harness for it. Last commit 2026-08-31.
 
 ---
 
+## Phase 3 (2026-10-18)
+
+- [x] 2026-10-18 Pick models in the browser: a box under each faction panel (`provider` or `provider:model`), `/api/providers`, checked with the provider before the game starts; recorded as `game.seats` and re-pinned when a game is loaded.
+- [x] 2026-10-18 Replay viewer: every turn stores a board frame (`TurnResult.frame`); REPLAY in the game-over summary steps or plays through it. Saves from before frames existed can't be replayed.
+- [x] 2026-10-18 Shareable recap: `/api/recap` and SHARE RECAP; one script-free HTML page (CSP forbids scripts too), all model text escaped (tested with script/img payloads).
+- [x] 2026-10-18 Elo leaderboard: `npm run leaderboard`, `/api/leaderboard`, LEADERBOARD modal.
+- [x] 2026-10-18 Read-only demo: `READ_ONLY=1`, `PORT`, `/api/games/:id`, `Dockerfile`, `demo-games/`. Docker image built and run locally. **Not deployed anywhere** - needs a host (any Docker or Node host) and real games in `demo-games/`; the fake-provider test games must not be used, their text is canned.
+- [x] 2026-10-18 Found while testing: the built UI loads its script with `crossorigin`, so any port other than 3000/3001 got 403s on its own files. Same-origin is now accepted in read-only mode only (in normal mode it would reopen DNS rebinding against a key-spending server). Normal mode on a LAN address (`HOST=0.0.0.0`) still has this limitation.
+- [x] 2026-10-18 Header tightened so nothing wraps at 1280px.
+- [ ] Nothing here has met a real model yet: no API keys were configured in this environment. First real step: `npm run tournament -- --max-turns 5` (about $0.40 by the untested estimates), then `npm run leaderboard`.
+
 ## Phase 2 (2026-10-18)
 
 - [x] 2026-10-18 Save/load: autosave after every turn to `games/<id>.json`, `/api/games`, `/api/load`, Load dropdown. A restored game replays exactly like the original (test compares full state after a further turn, dice position included).

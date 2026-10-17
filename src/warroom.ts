@@ -32,7 +32,9 @@ export class WarRoom {
   constructor(
     private modal: HTMLElement,
     private body: HTMLElement,
-    private colors: Record<string, string>
+    private colors: Record<string, string>,
+    /** Where turns come from: the live server, or a saved game viewed locally. */
+    private loadTurns: () => Promise<TurnResult[]> = async () => (await fetch('/api/turns')).json()
   ) {
     modal.addEventListener('click', e => {
       if (e.target === modal) this.close()
@@ -63,8 +65,7 @@ export class WarRoom {
     this.state = state
     this.chat = chat
     try {
-      const res = await fetch('/api/turns')
-      this.turns = await res.json()
+      this.turns = await this.loadTurns()
     } catch (err) {
       console.error('Failed to fetch turns:', err)
     }

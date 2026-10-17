@@ -1,0 +1,1 @@
+Saved games for the read-only demo (`Dockerfile`, `READ_ONLY=1`). Copy finished games here from `games/` or `games/tournaments/<id>/`; tournament folders can be copied whole into `demo-games/tournaments/`. The demo opens the newest finished game.

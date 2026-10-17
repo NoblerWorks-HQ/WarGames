@@ -1156,3 +1156,27 @@ body::before {
 .replay-turn { font-variant-numeric: tabular-nums; font-size: 0.75rem; min-width: 52px; }
 .replay-caption { flex: 1; min-width: 0; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 700px) { .replay-bar { flex-wrap: wrap; } .replay-caption { flex-basis: 100%; white-space: normal; } }
+
+/* Read-only demo: nothing that would change the shared game */
+body.read-only #btn-start, body.read-only #btn-pause, body.read-only #btn-resume, body.read-only #btn-step,
+body.read-only #btn-stop, body.read-only #btn-reset, body.read-only .speed, body.read-only #scenario-select,
+body.read-only .seat-input { display: none !important; }
+
+/* Header fit: nothing in it wraps; on narrower screens it tightens before anything collides */
+#header { gap: 16px; }
+.logo, .stat-value, .btn, .speed-label { white-space: nowrap; }
+.header-stats, .controls { flex-shrink: 0; }
+@media (max-width: 1500px) {
+  #header { padding: 0 12px; }
+  .logo { font-size: 12px; letter-spacing: 2px; }
+  .header-stats { gap: 14px; }
+  .controls { gap: 6px; }
+  .btn { padding: 7px 10px; font-size: 10px; letter-spacing: 0.5px; }
+  .load-select { max-width: 120px; }
+  .speed input { width: 80px; }
+}
+@media (max-width: 1300px) {
+  .logo { display: none; }
+  .stat-label { letter-spacing: 1px; }
+}
+@media (max-width: 1500px) { #scenario-select { max-width: none; } }

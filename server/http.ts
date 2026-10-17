@@ -26,3 +26,17 @@ export function isAllowedOrigin(origin: string | undefined, ports: number[] = [3
     return false
   }
 }
+
+/**
+ * True when the browser's Origin is this server itself (the built UI loads its script with
+ * crossorigin, so it sends one). Only safe where nothing can spend money: a page on a
+ * DNS-rebound hostname also passes this check, which is why it's used in READ_ONLY mode only.
+ */
+export function isSameOrigin(origin: string | undefined, host: string | undefined): boolean {
+  if (!origin || !host) return false
+  try {
+    return new URL(origin).host === host
+  } catch {
+    return false
+  }
+}
