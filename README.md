@@ -23,13 +23,13 @@ AI-powered geopolitical strategy simulation. Three great powers - NATO, Russia, 
 
 <div align="center">
 
-[![Visit the website](https://img.shields.io/badge/Visit_the_website-noblerworks--hq.github.io%2FWarGames-c0392b?style=for-the-badge&logo=googlechrome&logoColor=white)](https://noblerworks-hq.github.io/WarGames/)
+[![Visit the website](https://img.shields.io/badge/Visit_the_website-wargames.noblerworks.com-c0392b?style=for-the-badge&logo=googlechrome&logoColor=white)](https://wargames.noblerworks.com/)
 
-**[→ noblerworks-hq.github.io/WarGames](https://noblerworks-hq.github.io/WarGames/)**
+**[→ wargames.noblerworks.com](https://wargames.noblerworks.com/)**
 
 </div>
 
-[![Website](https://img.shields.io/badge/Website-noblerworks--hq.github.io%2FWarGames-red)](https://noblerworks-hq.github.io/WarGames/)
+[![Website](https://img.shields.io/badge/Website-wargames.noblerworks.com-red)](https://wargames.noblerworks.com/)
 ![AI Strategy](https://img.shields.io/badge/AI-Strategy%20Simulation-red)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)
 ![Leaflet](https://img.shields.io/badge/Leaflet-199900?logo=leaflet&logoColor=white)
@@ -332,10 +332,10 @@ Free, open-source projects from the [Nobler Works](https://noblerworks.com/) tea
 
 | Project | What it is | |
 |---|---|---|
-| 🛰️ **[IRONSIGHT](https://github.com/NoblerWorks-HQ/IRONSIGHT)** | Real-time OSINT command center - 50+ live intel feeds, no API keys | **[Website →](https://noblerworks-hq.github.io/IRONSIGHT/)** |
+| 🛰️ **[IRONSIGHT](https://github.com/NoblerWorks-HQ/IRONSIGHT)** | Real-time OSINT command center - 50+ live intel feeds, no API keys | **[Website →](https://ironsight.noblerworks.com/)** |
 | ⛏️ **[Minecraft Agentic Builder](https://github.com/NoblerWorks-HQ/minecraft-agentic)** | A crew of AI agents builds Minecraft worlds live in your browser | [Repo →](https://github.com/NoblerWorks-HQ/minecraft-agentic) |
-| 📚 **[Everything AI, Summarized](https://github.com/PatrickWiloak/genai-research-papers-summarized)** | 156 landmark AI papers and 31 explainers in plain language | **[Website →](https://patrickwiloak.github.io/genai-research-papers-summarized/)** |
-| ☁️ **[Cloud, Data, AI & Security: Zero to Hero](https://github.com/PatrickWiloak/cloud-data-ai-security-zero-to-hero)** | 149 cert study guides across 27 providers, plus hands-on builds | **[Website →](https://patrickwiloak.github.io/cloud-data-ai-security-zero-to-hero/)** |
+| 📚 **[AI Zero to Hero](https://github.com/PatrickWiloak/ai-zero-to-hero)** | Everything AI in one place: learn, use at work, build, govern, get hired - plus 156 landmark papers in plain language | **[Website →](https://ai.noblerworks.com/)** |
+| ☁️ **[Cloud, Data, AI & Security: Zero to Hero](https://github.com/PatrickWiloak/cloud-data-ai-security-zero-to-hero)** | 149 cert study guides across 27 providers, plus hands-on builds | **[Website →](https://cloud.noblerworks.com/)** |
 | 🧠 **[Bedrock RAG with S3 Vectors](https://github.com/PatrickWiloak/bedrock-rag-s3-vectors-tutorial)** | Deploy document Q&A on AWS Bedrock in under 10 minutes (CDK or Terraform) | [Repo →](https://github.com/PatrickWiloak/bedrock-rag-s3-vectors-tutorial) |
 | 🏃 **[Proper Training for Distance Running](https://github.com/PatrickWiloak/proper-distance-running-training-guidance)** | Evidence-based running guide with twelve 5K-to-marathon plans | **[Read online →](https://achilles.fit/guides)** |
 
