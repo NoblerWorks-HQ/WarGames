@@ -8,6 +8,12 @@ project, the game is the harness for it. Last commit 2026-08-31.
 
 ---
 
+## Repo hygiene (2026-10-27)
+
+- [ ] Dependabot PRs #2-#7 open since 2026-10-17 (vitest 5, ESLint 10, dotenv 18 majors) - land or close.
+- [ ] Link check #9: `site/404.html` root-relative links are a lychee false positive (needs a root dir). Close #8 as superseded.
+
+
 ## Domain (2026-10-21)
 
 - [x] 2026-10-21 Site moved to `wargames.noblerworks.com` (Route 53 CNAME, NW); `/WarGames/` base paths removed from `site/`.
