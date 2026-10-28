@@ -111,10 +111,6 @@ Found by a read-only survey of the repo on 2026-09-18; none was tracked before. 
 - [x] ~~Validate model ids at startup~~ ✅ done 2026-09-17. `validateProviders()` runs at boot
       for every role's provider: unknown model or rejected key refuses to start and names the
       env var; unreachable provider warns and continues; `SKIP_MODEL_CHECK=1` skips it.
-- [ ] Blocked on keys (none in .env or NW SSM, checked 2026-10-28): run one real game per provider
-      (OpenAI, Gemini, Anthropic) with the new defaults once Patrick supplies a key for each - the defaults were checked against the docs and the key-rejected path against the
-      live APIs, but no turn has been played on `gpt-5.6-luna`, `gemini-3.5-flash-lite` or
-      `claude-sonnet-5` yet.
 
 ## 🟠 No safety net
 
