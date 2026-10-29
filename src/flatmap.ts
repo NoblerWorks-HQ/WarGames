@@ -3,6 +3,7 @@ import type { GameState, GameEvent } from './types.js'
 import type { EffectHost, LocalEffect, NukeBlast } from './effects/types.js'
 import { spawnCaptureImpact, spawnCombatImpact, spawnNukeBlast } from './effects/impacts.js'
 import { spawnLocalEffect } from './effects/local.js'
+import { splitUnitedStates } from './clip.js'
 
 // Faction colors
 const FACTION_COLORS: Record<string, string> = {
@@ -15,9 +16,11 @@ const NEUTRAL_COLOR = '#555555'
 
 // Map game territories to GeoJSON country names
 const TERRITORY_COUNTRIES: Record<string, string[]> = {
-  alaska: ['United States of America'],
-  western_na: ['Canada'],
-  eastern_na: ['Greenland'],
+  // The GeoJSON has one United States feature; splitUS() cuts it into these three at load.
+  // No game territory covers Canada or Greenland, so they are not drawn.
+  alaska: ['United States (Alaska)'],
+  western_na: ['United States (West)'],
+  eastern_na: ['United States (East)'],
   central_america: ['Mexico', 'Guatemala', 'Belize', 'Honduras', 'El Salvador', 'Nicaragua', 'Costa Rica', 'Panama', 'Cuba', 'Jamaica', 'Haiti', 'Dominican Republic', 'Puerto Rico', 'The Bahamas'],
   amazonia: ['Brazil', 'Venezuela', 'Colombia', 'Guyana', 'Suriname', 'French Guiana', 'Ecuador'],
   andes: ['Peru', 'Bolivia', 'Chile'],
@@ -167,11 +170,28 @@ export class FlatMap {
     }
   }
 
+  // Replace the single United States feature with Alaska / West / East features the territory table can name
+  private splitUS(geojson: CountryGeoJSON) {
+    const i = geojson.features.findIndex(f => f.properties.name === 'United States of America')
+    if (i < 0) return
+    const parts = splitUnitedStates(geojson.features[i].geometry)
+    const feature = (name: string, coordinates: number[][][][]) => ({
+      type: 'Feature' as const,
+      properties: { name },
+      geometry: { type: 'MultiPolygon' as const, coordinates }
+    })
+    geojson.features.splice(i, 1,
+      feature('United States (Alaska)', parts.alaska),
+      feature('United States (West)', parts.western),
+      feature('United States (East)', parts.eastern))
+  }
+
   private async loadGeoJSON() {
     try {
       const res = await fetch('/countryborders.json')
       const geojson = (await res.json()) as CountryGeoJSON
       this.fixAntimeridian(geojson)
+      this.splitUS(geojson)
       this.geojsonData = geojson
       // Re-render if state arrived before GeoJSON loaded
       if (this.pendingState) {
