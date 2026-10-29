@@ -19,7 +19,7 @@ Starting positions are deliberately asymmetric (they follow the real-world balan
 | russia | Russian Federation | 3 | 6 | 2 / 0 / 2 / 1 | 2 |
 | china | People's Republic of China | 2 | 8 | 1 / 2 / 1 / 1 | 1 |
 
-Everyone starts level on nuclear (tech 1, a couple of warheads), so nobody can retaliate until someone researches Second Strike.
+Everyone starts level on nuclear (tech 1; NATO and Russia hold 2 warheads, China 1), so nobody can retaliate until someone researches Second Strike.
 
 ### Mirror scenario
 
@@ -90,12 +90,12 @@ substitutes another unit for you.
 | `research` | `tech` | Raise one track a level (see Tech). |
 | `trade` | `to`, `offer` | Give resources to another faction. The full offer must be affordable or nothing moves. The recipient is told. |
 | `spy` | `target` | 2 influence (1 with intelligence 1). The target shows up in your **next** turn's briefing. |
-| `diplomacy` | `to`, `proposal: "alliance"` | Propose an alliance (see Diplomacy). |
+| `diplomacy` | `to`, `proposal: "alliance"` | Propose an alliance (see Diplomacy). Any other proposal text is only delivered to the target as a message. |
 | `break_alliance` | `to` | End an alliance. You become an Oathbreaker for good and gain +3 attack for the rest of the turn. |
 | `message` | `message`, optional `to` | Up to 280 characters. With `to` only that faction receives it; otherwise both others do. |
-| `hire_mercenary` | `territory` | 5 gold. Take one mercenary from a neutral territory you border or stand in as your own infantry. A neutral territory becomes yours. |
+| `hire_mercenary` | `territory` | 5 gold. Take one mercenary from a territory that has mercenaries and that you border or stand in, as your own infantry. A neutral territory becomes yours. |
 | `build_nuke` | - | Needs nuclear 1. Costs 10 gold + 5 uranium (8 + 3 from nuclear 2). |
-| `nuke` | `target` | See Nuclear exchange. |
+| `nuke` | `target` | Spends one warhead you hold (see Nuclear exchange). |
 
 ## Combat
 
@@ -139,7 +139,7 @@ shown in the end-of-game summary.
 
 You see your territories, territories adjacent to them or to your units, your allies'
 territories, and whatever you spied on last turn. Combat, captures, nukes, betrayals and
-warhead builds are announced to everyone in `recentEvents`.
+warhead builds and victories are announced to everyone in `recentEvents` (the last 3 turns). Your own events, and trades sent to you, are shown to you as well.
 
 ## Tech
 
