@@ -488,7 +488,15 @@ export class FlatMap {
     for (const feature of this.geojsonData.features) {
       const countryName = feature.properties.name
       const territoryId = COUNTRY_TO_TERRITORY[countryName]
-      if (!territoryId) continue
+      if (!territoryId) {
+        // Land no territory covers (Canada, Greenland...) is drawn once as plain ground, never owned,
+        // so the map has no holes now that basemap tiles are gone. Antarctica stays off the board.
+        if (countryName !== 'Antarctica' && !this.countryLayers.has(countryName)) {
+          const inert = { fillColor: NEUTRAL_COLOR, fillOpacity: 0.12, color: '#4a4a4a', weight: 0.5, opacity: 0.5, interactive: false }
+          this.countryLayers.set(countryName, L.geoJSON(feature, { style: inert, interactive: false }).addTo(this.map))
+        }
+        continue
+      }
 
       const owner = territoryOwners[territoryId]
       const color = owner ? FACTION_COLORS[owner] : NEUTRAL_COLOR
