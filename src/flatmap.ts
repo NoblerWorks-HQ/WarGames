@@ -95,11 +95,8 @@ export class FlatMap {
       keyboard: false
     })
 
-    // Dark tile layer
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      noWrap: true
-    }).addTo(this.map)
+    // No basemap tiles: Carto's free dark tiles now need an API key and watermark every tile.
+    // The country GeoJSON below draws all the land; #globe-container's background is the ocean.
 
     // Fill container edge-to-edge
     this.fitMapToContainer()
@@ -474,10 +471,11 @@ export class FlatMap {
       const color = owner ? FACTION_COLORS[owner] : NEUTRAL_COLOR
       const newStyle = {
         fillColor: color,
-        fillOpacity: owner ? 0.35 : 0.1,
-        color: owner ? color : '#444444',
-        weight: owner ? 1.5 : 0.5,
-        opacity: owner ? 0.8 : 0.3
+        // Neutral land is a touch brighter now that no basemap tiles draw it underneath
+        fillOpacity: owner ? 0.35 : 0.22,
+        color: owner ? color : '#6a6a6a',
+        weight: owner ? 1.5 : 0.6,
+        opacity: owner ? 0.8 : 0.6
       }
 
       const existing = this.countryLayers.get(countryName)
