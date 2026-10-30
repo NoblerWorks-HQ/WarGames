@@ -226,7 +226,7 @@ The shared recap pages need no server at all, so you can put them straight on Gi
 - **Frontend**: Vite + TypeScript + Leaflet map with territory overlays, combat effects, and game summary
 - **Backend**: Express server (port 3001) with game engine and AI provider abstraction
 - **AI**: Direct API calls to Gemini, OpenAI, or Anthropic (no agent framework - just raw API)
-- **State**: In-memory only. The server holds a single `GameEngine` instance (`server/index.ts`) and never writes game state to disk, so restarting the server (including a `tsx watch` reload during `npm run dev`) drops the game in progress and its turn history. There is no save/load.
+- **State**: The server holds a single `GameEngine` instance (`server/index.ts`) and autosaves it after every turn (`server/saves.ts`, `SaveStore`: written beside the target then renamed, so a crash never leaves half a save). Saved games can be listed and loaded back.
 
 ### Project Structure
 
@@ -313,6 +313,13 @@ npm run typecheck # Type-check client + server (tsc --noEmit)
 npm test         # Turn-resolver tests (vitest, AI mocked - no API key needed)
 npm start        # Production server: API + built client (run `npm run build` first) on http://localhost:3001
 ```
+
+## Docs
+
+- [docs/FEATURES.md](docs/FEATURES.md) - every user-visible feature, verified against the code
+- [game/rules.md](game/rules.md) - the full game rules
+- [CONTRIBUTING.md](CONTRIBUTING.md) - how to contribute
+- [TODO.md](TODO.md) - open work
 
 ## License
 
