@@ -2,7 +2,7 @@
 #   docker build -t wargames-demo .
 #   docker run -p 3001:3001 wargames-demo
 # Put the games to show in demo-games/ (copy them from games/ or games/tournaments/<id>/) before building.
-FROM node:22-alpine
+FROM node:24-alpine
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci

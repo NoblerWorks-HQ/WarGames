@@ -12,6 +12,7 @@ project, the game is the harness for it. Last commit 2026-08-31.
 
 - [x] 2026-10-27 Dependabot #2, #3, #5-#7 landed (gate clean).
 - [x] 2026-10-31 vite 5.4 -> 8.3 and vitest 3 -> 5 (#4) landed together; gate clean. sjgold #10 #11 #15 merged.
+- [x] 2026-10-31 Node 24: CI reads the new `.nvmrc` (24), Dockerfile `node:24-alpine`; typecheck, lint, test, build and `docker build` pass on 24. Node 26 planned ~spring 2027.
 - [x] 2026-10-27 Link check: `--root-dir site` so `site/404.html`'s root-relative links resolve; #8/#9 closed.
 
 

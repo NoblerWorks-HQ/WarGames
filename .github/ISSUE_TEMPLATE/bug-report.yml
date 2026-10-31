@@ -50,7 +50,7 @@ body:
     id: env
     attributes:
       label: Node version and OS
-      placeholder: "Node 22.4.0, macOS 15"
+      placeholder: "Node 24.11.0, macOS 15"
   - type: checkboxes
     id: checks
     attributes:
