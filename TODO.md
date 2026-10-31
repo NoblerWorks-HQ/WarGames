@@ -19,7 +19,7 @@ project, the game is the harness for it. Last commit 2026-08-31.
 ## Domain (2026-10-21)
 
 - [x] 2026-10-21 Site moved to `wargames.noblerworks.com` (Route 53 CNAME, NW); `/WarGames/` base paths removed from `site/`.
-- [ ] 2026-11-01 (moved from 10-28 by Pat) Patrick: Search Console `sc-domain:noblerworks.com` -> submit `https://wargames.noblerworks.com/sitemap.xml`.
+- [x] ✅ 2026-10-31 submitted via API (read, 5 URLs, 0 errors); 2026-11-01 (moved from 10-28 by Pat) Patrick: Search Console `sc-domain:noblerworks.com` -> submit `https://wargames.noblerworks.com/sitemap.xml`.
 
 ## Phase 3 (2026-10-18)
 
