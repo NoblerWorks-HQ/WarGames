@@ -18,7 +18,7 @@ Status: open-source research demo that runs locally. A hosted demo is not planne
 
 ## The browser UI
 
-- **Interactive map** ([src/flatmap.ts](../src/flatmap.ts), country shapes [public/countryborders.json](../public/countryborders.json)) - Leaflet map with territory overlays coloured by owner, units and live updates as each turn lands.
+- **Interactive map** ([src/flatmap.ts](../src/flatmap.ts), country shapes [public/countryborders.json](../public/countryborders.json)) - Leaflet map with territory overlays coloured by owner, units and live updates as each turn lands. No basemap tiles: the country shapes draw all the land, the United States is cut into Alaska / US West / US East ([src/clip.ts](../src/clip.ts)), and land no territory covers is plain ground.
 - **Map and screen effects** ([src/effects/](../src/effects/)) - animations for combat, capture, fortify, recruit, spy, research, mercenaries, betrayal, warhead builds and nuclear blasts, plus screen-level effects.
 - **Turn controls** ([src/main.ts](../src/main.ts)) - Start, Pause / Resume, Step (one turn, then pause), turn interval 5-60 seconds, Stop / Reset.
 - **Faction panels and chat** - per-faction stats, model and spend, and the running chat log of public statements and bulletins.

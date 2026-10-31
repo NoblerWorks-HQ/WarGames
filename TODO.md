@@ -11,7 +11,7 @@ project, the game is the harness for it. Last commit 2026-08-31.
 ## Repo hygiene (2026-10-27)
 
 - [x] 2026-10-27 Dependabot #2, #3, #5-#7 landed (gate clean).
-- [ ] 2026-10-31 Upgrade vite 5.4 -> 6+ and vitest 5 (#4) together; run the gate, then close #4.
+- [x] 2026-10-31 vite 5.4 -> 8.3 and vitest 3 -> 5 (#4) landed together; gate clean. sjgold #10 #11 #15 merged.
 - [x] 2026-10-27 Link check: `--root-dir site` so `site/404.html`'s root-relative links resolve; #8/#9 closed.
 
 

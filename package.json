@@ -30,7 +30,7 @@
     "express": "^5.2.1",
     "leaflet": "^1.9.4",
     "typescript": "^5.9.3",
-    "vite": "^5.4.21"
+    "vite": "^8.3.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -43,6 +43,6 @@
     "globals": "^17.12.0",
     "tsx": "^4.21.0",
     "typescript-eslint": "^8.70.0",
-    "vitest": "^3.2.7"
+    "vitest": "^5.0.5"
   }
 }
