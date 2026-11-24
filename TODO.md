@@ -79,7 +79,7 @@ All fixed 2026-10-17 in `server/engine.ts`. 13 new tests in `server/engine.test.
 - [x] 2026-10-17 low - `index.html` hard-coded stale starting numbers ("0 / 100", old resources).
 - [x] 2026-10-17 low - `game/rules.md` described a different game (20 territories, cavalry/siege, 10/30/5 victory thresholds). It is rewritten from the engine and lists the `tech-tree.json` effects that aren't implemented.
 - [x] ~~Nuclear start: NATO/Russia began at nuclear 3 with 5,000+ warheads, so `research nuclear`/`build_nuke` did nothing for them.~~ Fixed 2026-10-18 (see Phase 1).
-- [ ] Still open: starting territories are asymmetric (NATO 8, Russia 3, China 2) and NATO starts with all tech at 2. Fine for the satire, but it weakens provider comparisons (the mirror scenario would address it).
+- [ ] Still open: starting territories are asymmetric (NATO 8, Russia 3, China 2) and NATO starts with all tech at 2. Fine for the satire, but it weakens provider comparisons; for comparisons use the `mirror` scenario (`game/scenarios/mirror.json`, level start, landed 2026-10-18).
 
 ## Audit findings (2026-10-02)
 
